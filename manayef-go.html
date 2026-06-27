@@ -1,0 +1,2228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منايف GO</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --primary: #FF6B00;
+    --primary-dark: #E55A00;
+    --primary-light: #FFF3EB;
+    --secondary: #1A1A2E;
+    --accent: #00C896;
+    --accent2: #FFD700;
+    --bg: #F8F9FA;
+    --card: #FFFFFF;
+    --text: #1A1A2E;
+    --text-muted: #6B7280;
+    --border: #E5E7EB;
+    --danger: #EF4444;
+    --warning: #F59E0B;
+    --success: #10B981;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+    --shadow-hover: 0 8px 30px rgba(255,107,0,0.15);
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: block; }
+
+  /* ===== AUTH SCREEN ===== */
+  #screen-auth {
+    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+  #screen-auth.active { display: flex; }
+
+  .auth-logo {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .logo-icon {
+    width: 100px;
+    height: 100px;
+    background: var(--primary);
+    border-radius: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 48px;
+    box-shadow: 0 20px 60px rgba(255,107,0,0.4);
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .logo-name {
+    font-size: 36px;
+    font-weight: 900;
+    color: white;
+    letter-spacing: -1px;
+  }
+  .logo-name span { color: var(--primary); }
+  .logo-sub {
+    font-size: 14px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 4px;
+  }
+
+  .auth-card {
+    background: white;
+    border-radius: 24px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.3);
+  }
+  .auth-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    background: var(--bg);
+    padding: 4px;
+    border-radius: 12px;
+  }
+  .auth-tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-muted);
+    transition: all 0.3s;
+    border: none;
+    background: transparent;
+    font-family: 'Cairo', sans-serif;
+  }
+  .auth-tab.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255,107,0,0.3);
+  }
+  .auth-type-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .type-btn {
+    padding: 12px 8px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    text-align: center;
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    background: white;
+    transition: all 0.3s;
+    color: var(--text-muted);
+  }
+  .type-btn .icon { font-size: 24px; display: block; margin-bottom: 4px; }
+  .type-btn.selected {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .inp-group { margin-bottom: 16px; }
+  .inp-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .inp {
+    width: 100%;
+    padding: 13px 16px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: white;
+    transition: border-color 0.3s;
+    outline: none;
+    direction: rtl;
+  }
+  .inp:focus { border-color: var(--primary); }
+  .btn-primary {
+    width: 100%;
+    padding: 15px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 8px;
+  }
+  .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(255,107,0,0.3); }
+
+  /* ===== CUSTOMER APP ===== */
+  #screen-customer {
+    background: var(--bg);
+    padding-bottom: 80px;
+  }
+
+  .app-header {
+    background: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .location-text small { font-size: 11px; color: var(--text-muted); display: block; }
+  .location-text strong { font-size: 15px; font-weight: 700; }
+  .header-actions { display: flex; gap: 10px; }
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg);
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.2s;
+  }
+  .icon-btn:hover { background: var(--primary-light); }
+  .badge {
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    width: 18px;
+    height: 18px;
+    background: var(--primary);
+    border-radius: 50%;
+    font-size: 10px;
+    color: white;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .search-bar {
+    padding: 12px 20px;
+    background: white;
+    border-bottom: 1px solid var(--border);
+  }
+  .search-input-wrap {
+    display: flex;
+    align-items: center;
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 10px 16px;
+    gap: 10px;
+  }
+  .search-input-wrap input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px;
+    outline: none;
+    direction: rtl;
+    color: var(--text);
+  }
+
+  /* Category Scroll */
+  .categories-section {
+    background: white;
+    padding: 16px 0;
+    margin-bottom: 8px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 800;
+    padding: 0 20px;
+    margin-bottom: 14px;
+  }
+  .categories-scroll {
+    display: flex;
+    gap: 12px;
+    padding: 0 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .categories-scroll::-webkit-scrollbar { display: none; }
+  .cat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    min-width: 72px;
+    transition: transform 0.2s;
+  }
+  .cat-item:hover { transform: translateY(-3px); }
+  .cat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    transition: all 0.3s;
+  }
+  .cat-item.active .cat-icon, .cat-item:hover .cat-icon {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(255,107,0,0.25);
+  }
+  .cat-label { font-size: 12px; font-weight: 600; text-align: center; white-space: nowrap; }
+  .cat-item.active .cat-label { color: var(--primary); }
+
+  /* Banner */
+  .banner-section { padding: 16px 20px; }
+  .banner-scroll { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; }
+  .banner-scroll::-webkit-scrollbar { display: none; }
+  .banner-card {
+    min-width: 280px;
+    height: 130px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .banner-card .bg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+  }
+  .banner-card .content {
+    position: absolute;
+    inset: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .banner-card .tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(4px);
+    color: white;
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    width: fit-content;
+  }
+  .banner-card h3 { color: white; font-size: 18px; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .banner-card p { color: rgba(255,255,255,0.85); font-size: 13px; margin-top: 4px; }
+
+  /* Points Section */
+  .points-section {
+    margin: 0 20px 16px;
+    background: linear-gradient(135deg, #1A1A2E, #0F3460);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .points-section::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    width: 100px;
+    height: 100px;
+    background: var(--primary);
+    border-radius: 50%;
+    opacity: 0.15;
+  }
+  .points-icon {
+    font-size: 40px;
+    position: relative;
+    z-index: 1;
+  }
+  .points-info { flex: 1; position: relative; z-index: 1; }
+  .points-info h3 { color: white; font-size: 16px; font-weight: 800; }
+  .points-info p { color: rgba(255,255,255,0.7); font-size: 12px; margin-top: 2px; }
+  .points-count {
+    background: var(--primary);
+    color: white;
+    border-radius: 12px;
+    padding: 8px 16px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+  .points-count .num { font-size: 22px; font-weight: 900; display: block; }
+  .points-count small { font-size: 11px; opacity: 0.9; }
+
+  /* Offers Section */
+  .offers-section { padding: 0 20px 16px; }
+  .offers-scroll { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; margin-top: 14px; }
+  .offers-scroll::-webkit-scrollbar { display: none; }
+  .offer-card {
+    min-width: 200px;
+    background: white;
+    border-radius: var(--radius);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .offer-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: var(--danger);
+    color: white;
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .offer-icon { font-size: 40px; margin-bottom: 12px; margin-top: 8px; }
+  .offer-card h4 { font-size: 14px; font-weight: 800; margin-bottom: 4px; }
+  .offer-card p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .offer-code {
+    margin-top: 10px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  /* Stores Section */
+  .stores-section { padding: 0 20px; }
+  .store-card {
+    background: white;
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid var(--border);
+  }
+  .store-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+  .store-img {
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+    position: relative;
+  }
+  .store-status {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .store-status.open { background: rgba(16,185,129,0.15); color: var(--success); }
+  .store-status.busy { background: rgba(245,158,11,0.15); color: var(--warning); }
+  .store-status.featured {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: var(--primary);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .store-info { padding: 14px 16px; }
+  .store-info h3 { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+  .store-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .store-meta span { display: flex; align-items: center; gap: 4px; }
+  .store-tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .store-tag {
+    background: var(--bg);
+    color: var(--text-muted);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 100;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    font-family: 'Cairo', sans-serif;
+    color: var(--text-muted);
+    font-size: 11px;
+    gap: 2px;
+    position: relative;
+  }
+  .nav-item .nav-icon { font-size: 22px; transition: transform 0.2s; }
+  .nav-item.active { color: var(--primary); }
+  .nav-item.active .nav-icon { transform: scale(1.15); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20%;
+    right: 20%;
+    height: 3px;
+    background: var(--primary);
+    border-radius: 0 0 4px 4px;
+  }
+
+  /* ===== DRIVER REGISTRATION ===== */
+  #screen-driver-register {
+    background: var(--bg);
+    min-height: 100vh;
+  }
+  .reg-header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    padding: 50px 24px 30px;
+    color: white;
+  }
+  .reg-header h1 { font-size: 26px; font-weight: 900; margin-bottom: 6px; }
+  .reg-header p { font-size: 14px; opacity: 0.85; line-height: 1.6; }
+  .reg-steps {
+    display: flex;
+    gap: 6px;
+    margin-top: 20px;
+  }
+  .reg-step { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.3); }
+  .reg-step.done { background: white; }
+  .reg-step.active { background: var(--accent2); }
+  
+  .reg-body { padding: 24px; }
+  .reg-section {
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+  .reg-section h3 {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .upload-box {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 12px;
+    background: var(--bg);
+  }
+  .upload-box:hover { border-color: var(--primary); background: var(--primary-light); }
+  .upload-box.uploaded { border-color: var(--success); border-style: solid; background: rgba(16,185,129,0.05); }
+  .upload-icon { font-size: 36px; margin-bottom: 8px; }
+  .upload-box p { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+  .upload-box .uploaded-text { color: var(--success); font-weight: 700; font-size: 14px; }
+  
+  .terms-box {
+    background: #FFF8F0;
+    border: 1px solid rgba(255,107,0,0.2);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .term-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .term-item:last-child { margin-bottom: 0; }
+  .term-check { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+  .term-text { font-size: 13px; color: var(--text); line-height: 1.6; font-weight: 500; }
+  
+  .pending-screen {
+    text-align: center;
+    padding: 60px 30px;
+  }
+  .pending-icon {
+    font-size: 80px;
+    margin-bottom: 24px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .pending-screen h2 { font-size: 24px; font-weight: 900; margin-bottom: 12px; color: var(--primary); }
+  .pending-screen p { font-size: 15px; color: var(--text-muted); line-height: 1.7; }
+
+  /* ===== DRIVER APP ===== */
+  #screen-driver {
+    background: var(--bg);
+    padding-bottom: 80px;
+  }
+  .driver-header {
+    background: linear-gradient(135deg, var(--secondary), #0F3460);
+    padding: 50px 20px 24px;
+    color: white;
+  }
+  .driver-welcome { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .driver-welcome h2 { font-size: 20px; font-weight: 800; }
+  .driver-welcome p { font-size: 13px; opacity: 0.7; margin-top: 2px; }
+  .online-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 30px;
+    padding: 8px 16px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+  }
+  .toggle-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    transition: all 0.3s;
+  }
+  .toggle-dot.online { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .toggle-dot.offline { background: var(--text-muted); }
+  .online-label { font-size: 14px; font-weight: 700; }
+  
+  .driver-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .driver-stat {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .driver-stat .val { font-size: 22px; font-weight: 900; display: block; }
+  .driver-stat .lbl { font-size: 11px; opacity: 0.8; margin-top: 2px; display: block; }
+
+  .notification-banner {
+    margin: 16px 20px 0;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: var(--radius);
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    animation: slideIn 0.4s ease;
+  }
+  @keyframes slideIn { from{transform:translateY(-20px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .notif-icon { font-size: 36px; flex-shrink: 0; }
+  .notif-info { flex: 1; color: white; }
+  .notif-info h4 { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+  .notif-info p { font-size: 13px; opacity: 0.85; line-height: 1.5; }
+  .notif-action {
+    background: white;
+    color: var(--primary);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .driver-orders { padding: 16px 20px; }
+  .order-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .order-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .order-id { font-size: 13px; font-weight: 700; color: var(--text-muted); }
+  .order-status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .status-delivering { background: rgba(16,185,129,0.1); color: var(--success); }
+  .status-picked { background: rgba(245,158,11,0.1); color: var(--warning); }
+  .status-done { background: rgba(99,102,241,0.1); color: #6366F1; }
+  
+  .order-route { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .route-point { flex: 1; }
+  .route-point .label { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 2px; }
+  .route-point .value { font-size: 14px; font-weight: 700; }
+  .route-arrow { font-size: 20px; color: var(--primary); }
+  .order-card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border); }
+  .order-earn { font-size: 18px; font-weight: 900; color: var(--success); }
+  .order-earn small { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+  /* Driver Stats Page */
+  .driver-analytics { padding: 20px; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .stat-card .s-icon { font-size: 32px; margin-bottom: 10px; display: block; }
+  .stat-card .s-val { font-size: 26px; font-weight: 900; display: block; color: var(--text); }
+  .stat-card .s-lbl { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 4px; display: block; }
+  
+  .rating-card {
+    background: linear-gradient(135deg, var(--accent2), #FFA500);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .rating-stars { font-size: 32px; }
+  .rating-info { flex: 1; }
+  .rating-num { font-size: 36px; font-weight: 900; color: white; display: block; }
+  .rating-sub { font-size: 13px; color: rgba(255,255,255,0.85); }
+  
+  .earnings-chart {
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+  .earnings-chart h3 { font-size: 16px; font-weight: 800; margin-bottom: 16px; }
+  .chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+  .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .chart-bar {
+    width: 100%;
+    background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+    border-radius: 6px 6px 0 0;
+    min-height: 4px;
+    transition: height 1s ease;
+  }
+  .chart-day { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+
+  /* Driver Profile */
+  .driver-profile { padding: 20px; }
+  .profile-card-big {
+    background: linear-gradient(135deg, var(--secondary), #0F3460);
+    border-radius: var(--radius);
+    padding: 24px;
+    color: white;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .profile-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    border: 3px solid rgba(255,255,255,0.2);
+    flex-shrink: 0;
+  }
+  .profile-card-big h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .profile-card-big p { font-size: 13px; opacity: 0.75; }
+  
+  .wallet-card {
+    background: linear-gradient(135deg, var(--accent), #00A67E);
+    border-radius: var(--radius);
+    padding: 20px;
+    color: white;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .wallet-balance .label { font-size: 13px; opacity: 0.85; margin-bottom: 4px; }
+  .wallet-balance .amount { font-size: 30px; font-weight: 900; }
+  .withdraw-btn {
+    background: white;
+    color: var(--accent);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  
+  .menu-list { background: white; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item:hover { background: var(--bg); }
+  .menu-item .m-icon { font-size: 22px; width: 40px; height: 40px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .menu-item .m-text { flex: 1; }
+  .menu-item .m-text strong { font-size: 14px; font-weight: 700; display: block; }
+  .menu-item .m-text small { font-size: 12px; color: var(--text-muted); }
+  .menu-item .m-arrow { color: var(--text-muted); font-size: 14px; }
+
+  /* ===== ADMIN ===== */
+  #screen-admin {
+    background: var(--bg);
+    padding-bottom: 80px;
+  }
+  .admin-sidebar-mobile {
+    background: var(--secondary);
+    color: white;
+    padding: 50px 20px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .admin-logo { font-size: 20px; font-weight: 900; }
+  .admin-logo span { color: var(--primary); }
+  .admin-user-info { font-size: 13px; opacity: 0.7; }
+
+  .admin-nav-scroll {
+    background: var(--secondary);
+    display: flex;
+    gap: 4px;
+    padding: 0 16px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .admin-nav-scroll::-webkit-scrollbar { display: none; }
+  .admin-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .admin-nav-btn.active { background: var(--primary); color: white; }
+  .admin-nav-btn:hover:not(.active) { background: rgba(255,255,255,0.15); color: white; }
+
+  .admin-content { padding: 20px; }
+
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .kpi-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.3s;
+    border-top: 4px solid transparent;
+  }
+  .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+  .kpi-card.orange { border-top-color: var(--primary); }
+  .kpi-card.green { border-top-color: var(--success); }
+  .kpi-card.blue { border-top-color: #3B82F6; }
+  .kpi-card.yellow { border-top-color: var(--warning); }
+  .kpi-card .k-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+  .kpi-card .k-val { font-size: 28px; font-weight: 900; display: block; color: var(--text); }
+  .kpi-card .k-lbl { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+  .kpi-card .k-change { font-size: 12px; margin-top: 6px; font-weight: 700; }
+  .kpi-card .k-change.up { color: var(--success); }
+  .kpi-card .k-change.down { color: var(--danger); }
+
+  .admin-section-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .admin-section-card h3 { font-size: 16px; font-weight: 800; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .view-all-btn { font-size: 13px; color: var(--primary); font-weight: 700; cursor: pointer; border: none; background: none; font-family: 'Cairo', sans-serif; }
+
+  .activity-item {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .activity-dot.green { background: var(--success); }
+  .activity-dot.orange { background: var(--primary); }
+  .activity-dot.blue { background: #3B82F6; }
+  .activity-info { flex: 1; }
+  .activity-info p { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .activity-info small { font-size: 11px; color: var(--text-muted); }
+  .activity-amount { font-size: 14px; font-weight: 700; color: var(--success); }
+
+  /* Drivers Admin List */
+  .drivers-list { }
+  .driver-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .driver-row:last-child { border-bottom: none; }
+  .driver-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .driver-info { flex: 1; }
+  .driver-info strong { font-size: 14px; font-weight: 700; display: block; }
+  .driver-info small { font-size: 12px; color: var(--text-muted); }
+  .driver-row .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .driver-row-actions { display: flex; gap: 6px; }
+  .mini-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: none;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mini-btn.accept { background: rgba(16,185,129,0.1); color: var(--success); }
+  .mini-btn.reject { background: rgba(239,68,68,0.1); color: var(--danger); }
+  .mini-btn.view { background: var(--bg); color: var(--text-muted); }
+  .mini-btn.accepted { background: rgba(16,185,129,0.15); color: var(--success); }
+  .pending-badge { background: rgba(245,158,11,0.1); color: var(--warning); padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    margin-bottom: 16px;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: white;
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    color: var(--text-muted);
+  }
+  .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+  .commission-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 8px;
+  }
+
+  /* Modals */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    display: none;
+    align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: white;
+    border-radius: 24px 24px 0 0;
+    padding: 24px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-success { flex: 1; padding: 14px; background: var(--success); color: white; border: none; border-radius: 12px; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .btn-danger { flex: 1; padding: 14px; background: var(--danger); color: white; border: none; border-radius: 12px; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .btn-outline { flex: 1; padding: 14px; background: white; color: var(--text); border: 2px solid var(--border); border-radius: 12px; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; }
+
+  .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .info-row .lbl { color: var(--text-muted); font-weight: 600; }
+  .info-row .val { font-weight: 700; }
+  .doc-preview { background: var(--bg); border-radius: 12px; padding: 20px; text-align: center; font-size: 40px; margin: 8px 0; }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--secondary);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    z-index: 9999;
+    transition: transform 0.4s ease;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    max-width: 90vw;
+    text-align: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+
+  /* Tabs inside driver app */
+  .driver-tabs {
+    display: none;
+  }
+  .driver-tab-content {
+    display: none;
+  }
+  .driver-tab-content.active {
+    display: block;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state .empty-icon { font-size: 56px; margin-bottom: 16px; }
+  .empty-state p { font-size: 15px; font-weight: 600; }
+  .empty-state small { font-size: 13px; margin-top: 6px; display: block; }
+
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+
+  /* Admin Order Row */
+  .order-row {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .order-row:last-child { border-bottom: none; }
+  .order-row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .order-row-bot { display: flex; justify-content: space-between; align-items: center; }
+  .order-num { font-size: 13px; font-weight: 700; }
+  .order-store { font-size: 13px; color: var(--text-muted); }
+  .order-total { font-size: 14px; font-weight: 800; color: var(--text); }
+  .order-commission { font-size: 12px; color: var(--primary); font-weight: 700; }
+
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ==================== AUTH SCREEN ==================== -->
+<div class="screen active" id="screen-auth">
+  <div class="auth-logo">
+    <div class="logo-icon">🛵</div>
+    <div class="logo-name">منايف <span>GO</span></div>
+    <div class="logo-sub">توصيل سريع في المنطقة كلها</div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">تسجيل الدخول</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">إنشاء حساب</button>
+    </div>
+    <div id="auth-login">
+      <div class="inp-group">
+        <label>رقم الهاتف</label>
+        <input class="inp" type="tel" placeholder="01xxxxxxxxx" id="login-phone">
+      </div>
+      <div class="inp-group">
+        <label>كلمة المرور</label>
+        <input class="inp" type="password" placeholder="••••••••" id="login-pass">
+      </div>
+      <button class="btn-primary" onclick="doLogin()">دخول ←</button>
+    </div>
+    <div id="auth-register" style="display:none">
+      <div class="auth-type-selector">
+        <button class="type-btn selected" onclick="selectType('customer',this)">
+          <span class="icon">👤</span>عميل
+        </button>
+        <button class="type-btn" onclick="selectType('driver',this)">
+          <span class="icon">🛵</span>مندوب
+        </button>
+        <button class="type-btn" onclick="selectType('merchant',this)">
+          <span class="icon">🏪</span>تاجر
+        </button>
+      </div>
+      <div class="inp-group">
+        <label>الاسم</label>
+        <input class="inp" type="text" placeholder="اسمك كامل" id="reg-name">
+      </div>
+      <div class="inp-group">
+        <label>رقم الهاتف</label>
+        <input class="inp" type="tel" placeholder="01xxxxxxxxx" id="reg-phone">
+      </div>
+      <div class="inp-group">
+        <label>كلمة المرور</label>
+        <input class="inp" type="password" placeholder="••••••••" id="reg-pass">
+      </div>
+      <button class="btn-primary" onclick="doRegister()">إنشاء الحساب ←</button>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:16px">
+      <span onclick="goAdmin()" style="cursor:pointer;opacity:0.4">⚙️ لوحة الإدارة</span>
+    </p>
+  </div>
+</div>
+
+<!-- ==================== DRIVER REGISTRATION ==================== -->
+<div class="screen" id="screen-driver-register">
+  <div class="reg-header">
+    <h1>🛵 تسجيل بيانات المندوب</h1>
+    <p>يرجى إكمال بياناتك لمراجعتها من الإدارة والموافقة عليها</p>
+    <div class="reg-steps">
+      <div class="reg-step done" id="step1"></div>
+      <div class="reg-step active" id="step2"></div>
+      <div class="reg-step" id="step3"></div>
+    </div>
+  </div>
+  <div class="reg-body" id="reg-form-body">
+    <div class="reg-section">
+      <h3>👤 البيانات الشخصية</h3>
+      <div class="inp-group">
+        <label>الاسم الرباعي</label>
+        <input class="inp" type="text" placeholder="الاسم الأول الثاني الثالث الرابع" id="drv-fullname">
+      </div>
+      <div class="inp-group">
+        <label>رقم الهاتف</label>
+        <input class="inp" type="tel" placeholder="01xxxxxxxxx" id="drv-phone">
+      </div>
+      <div class="inp-group">
+        <label>العنوان التفصيلي</label>
+        <input class="inp" type="text" placeholder="المنطقة، الشارع، رقم المنزل" id="drv-address">
+      </div>
+    </div>
+
+    <div class="reg-section">
+      <h3>📄 المستندات المطلوبة</h3>
+      <div class="upload-box" id="upload-id-front" onclick="simulateUpload('upload-id-front','✅ تم رفع صورة الرقم القومي (أمامي)')">
+        <div class="upload-icon">🪪</div>
+        <p>صورة الرقم القومي - الوجه الأمامي</p>
+        <p style="font-size:11px;margin-top:4px;color:var(--text-muted)">اضغط للرفع</p>
+      </div>
+      <div class="upload-box" id="upload-id-back" onclick="simulateUpload('upload-id-back','✅ تم رفع صورة الرقم القومي (خلفي)')">
+        <div class="upload-icon">🪪</div>
+        <p>صورة الرقم القومي - الوجه الخلفي</p>
+        <p style="font-size:11px;margin-top:4px;color:var(--text-muted)">اضغط للرفع</p>
+      </div>
+      <div class="upload-box" id="upload-selfie" onclick="simulateUpload('upload-selfie','✅ تم التقاط الصورة الشخصية')">
+        <div class="upload-icon">📷</div>
+        <p>صورة شخصية من الكاميرا</p>
+        <p style="font-size:11px;margin-top:4px;color:var(--text-muted)">اضغط لفتح الكاميرا</p>
+      </div>
+      <div class="upload-box" id="upload-license" onclick="simulateUpload('upload-license','✅ تم رفع رخصة الموتوسيكل')">
+        <div class="upload-icon">🏍️</div>
+        <p>رخصة الموتوسيكل</p>
+        <p style="font-size:11px;margin-top:4px;color:var(--text-muted)">اضغط للرفع</p>
+      </div>
+    </div>
+
+    <div class="reg-section">
+      <h3>📋 بنود التعهد والالتزام</h3>
+      <div class="terms-box">
+        <div class="term-item"><span class="term-check">✅</span><span class="term-text">أتعهد بتسليم جميع الطلبات في الوقت المحدد وبحالة جيدة</span></div>
+        <div class="term-item"><span class="term-check">✅</span><span class="term-text">أتعهد بالأمانة التامة في التعامل مع جميع الطلبات والمبالغ المالية</span></div>
+        <div class="term-item"><span class="term-check">✅</span><span class="term-text">أتعهد بالتعامل باحترام مع العملاء والتجار طوال فترة العمل</span></div>
+        <div class="term-item"><span class="term-check">✅</span><span class="term-text">أتعهد بالالتزام بقوانين المرور وسلامة الطريق أثناء التوصيل</span></div>
+        <div class="term-item"><span class="term-check">✅</span><span class="term-text">أقر بأن البيانات المقدمة صحيحة وكاملة وأتحمل المسؤولية القانونية عن أي بيانات مزيفة</span></div>
+        <div class="term-item"><span class="term-check">✅</span><span class="term-text">أوافق على سياسة التطبيق كاملة وحق الإدارة في تعليق أو إنهاء حسابي عند المخالفة</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:14px;background:var(--bg);border-radius:12px;cursor:pointer" onclick="toggleAgree(this)">
+        <div style="width:22px;height:22px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;transition:all 0.2s" id="agree-box"></div>
+        <span style="font-size:14px;font-weight:700">أوافق على جميع البنود السابقة</span>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="submitDriverReg()" style="margin-bottom:20px">إرسال الطلب للمراجعة 📤</button>
+  </div>
+
+  <!-- Pending State -->
+  <div class="pending-screen" id="reg-pending" style="display:none">
+    <div class="pending-icon">⏳</div>
+    <h2>طلبك قيد المراجعة</h2>
+    <p>تم إرسال بياناتك للإدارة بنجاح.<br>سيتم مراجعة طلبك وإعلامك خلال 24 ساعة عبر رقم هاتفك.</p>
+    <div style="margin-top:30px;padding:16px;background:var(--primary-light);border-radius:12px;border:1px solid rgba(255,107,0,0.2)">
+      <p style="font-size:13px;color:var(--primary);font-weight:700">📞 رقم التواصل: 01000000000</p>
+    </div>
+    <button class="btn-primary" style="margin-top:24px" onclick="showScreen('screen-auth')">العودة للرئيسية</button>
+  </div>
+</div>
+
+<!-- ==================== CUSTOMER APP ==================== -->
+<div class="screen" id="screen-customer">
+  <!-- Header -->
+  <div class="app-header">
+    <div class="header-location">
+      <span style="font-size:20px">📍</span>
+      <div class="location-text">
+        <small>توصيل إلى</small>
+        <strong>المنايف، إسماعيلية</strong>
+      </div>
+      <span style="color:var(--primary)">▾</span>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="showNotifs()">🔔<span class="badge">2</span></button>
+      <button class="icon-btn" onclick="showCart()">🛒<span class="badge" id="cart-badge">0</span></button>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <span>🔍</span>
+      <input type="text" placeholder="ابحث عن مطعم أو منتج..." id="search-input" oninput="doSearch(this.value)">
+      <span style="font-size:18px;cursor:pointer">🎙️</span>
+    </div>
+  </div>
+
+  <!-- Page content -->
+  <div id="customer-home">
+    <!-- Categories -->
+    <div class="categories-section">
+      <div class="categories-scroll">
+        <div class="cat-item active" onclick="filterCat('all',this)">
+          <div class="cat-icon" style="background:linear-gradient(135deg,#FF6B00,#FF8C42)">🏠</div>
+          <span class="cat-label">الكل</span>
+        </div>
+        <div class="cat-item" onclick="filterCat('food',this)">
+          <div class="cat-icon" style="background:linear-gradient(135deg,#FF4B4B,#FF8080)">🍔</div>
+          <span class="cat-label">المطاعم</span>
+        </div>
+        <div class="cat-item" onclick="filterCat('super',this)">
+          <div class="cat-icon" style="background:linear-gradient(135deg,#10B981,#34D399)">🛒</div>
+          <span class="cat-label">سوبرماركت</span>
+        </div>
+        <div class="cat-item" onclick="filterCat('pharma',this)">
+          <div class="cat-icon" style="background:linear-gradient(135deg,#3B82F6,#60A5FA)">💊</div>
+          <span class="cat-label">الصيدليات</span>
+        </div>
+        <div class="cat-item" onclick="filterCat('shop',this)">
+          <div class="cat-icon" style="background:linear-gradient(135deg,#8B5CF6,#A78BFA)">🏪</div>
+          <span class="cat-label">المتاجر</span>
+        </div>
+        <div class="cat-item" onclick="filterCat('pickup',this)">
+          <div class="cat-icon" style="background:linear-gradient(135deg,#F59E0B,#FCD34D)">🚶</div>
+          <span class="cat-label">استلم بنفسك</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Banners -->
+    <div class="banner-section">
+      <div class="banner-scroll">
+        <div class="banner-card" style="background:linear-gradient(135deg,#FF6B00,#FF4500)">
+          <div class="content">
+            <span class="tag">🔥 عرض محدود</span>
+            <h3>أبو سليم هايبر</h3>
+            <p>خصم 20% على منتجات الألبان اليوم</p>
+          </div>
+          <div class="bg" style="opacity:0.15;font-size:80px">🏪</div>
+        </div>
+        <div class="banner-card" style="background:linear-gradient(135deg,#1A1A2E,#0F3460)">
+          <div class="content">
+            <span class="tag">⭐ جديد</span>
+            <h3>طلبات منزلية</h3>
+            <p>اطلب أي حاجة من أي مكان</p>
+          </div>
+        </div>
+        <div class="banner-card" style="background:linear-gradient(135deg,#10B981,#059669)">
+          <div class="content">
+            <span class="tag">🎁 مكافآت</span>
+            <h3>اجمع نقاطك</h3>
+            <p>كل 100 جنيه = 10 نقاط</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Points & Rewards -->
+    <div class="points-section" onclick="showScreen('screen-rewards')">
+      <div class="points-icon">🏆</div>
+      <div class="points-info">
+        <h3>نقاط المكافآت</h3>
+        <p>كلما طلبت أكثر، كلما وفّرت أكثر</p>
+      </div>
+      <div class="points-count">
+        <span class="num">250</span>
+        <small>نقطة</small>
+      </div>
+    </div>
+
+    <!-- Offers -->
+    <div class="offers-section">
+      <div class="section-header">
+        <span class="section-title" style="padding:0">🎟️ القسائم والعروض</span>
+        <button class="view-all-btn" onclick="">الكل ←</button>
+      </div>
+      <div class="offers-scroll">
+        <div class="offer-card">
+          <div class="offer-badge">-25%</div>
+          <div class="offer-icon">🍕</div>
+          <h4>خصم على الطلب الأول</h4>
+          <p>خصم 25% على أول طلب من أي مطعم</p>
+          <div class="offer-code">MANAYEF25</div>
+        </div>
+        <div class="offer-card">
+          <div class="offer-badge">مجاني</div>
+          <div class="offer-icon">🛵</div>
+          <h4>توصيل مجاني</h4>
+          <p>على الطلبات فوق 100 جنيه</p>
+          <div class="offer-code">FREE100</div>
+        </div>
+        <div class="offer-card">
+          <div class="offer-badge">-15%</div>
+          <div class="offer-icon">🥗</div>
+          <h4>عروض الوجبات</h4>
+          <p>خصم 15% على وجبات الغداء</p>
+          <div class="offer-code">LUNCH15</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stores -->
+    <div class="stores-section">
+      <div class="section-header">
+        <span class="section-title" style="padding:0">🏪 المتاجر القريبة</span>
+      </div>
+      <div id="stores-list">
+        <!-- Abu Selim Hyper - FEATURED -->
+        <div class="store-card" onclick="openStore('abuselim')" data-cat="super">
+          <div class="store-img" style="background:linear-gradient(135deg,#1A1A2E,#0F3460)">
+            <span style="font-size:70px">🏪</span>
+            <div class="store-status featured">⭐ المتجر المميز</div>
+            <div class="store-status open">مفتوح</div>
+          </div>
+          <div class="store-info">
+            <h3>أبو سليم هايبر</h3>
+            <div class="store-meta">
+              <span>⭐ 4.9</span>
+              <span>📦 15-25 دقيقة</span>
+              <span>🛵 5 ج توصيل</span>
+            </div>
+            <div class="store-tags">
+              <span class="store-tag">بقالة</span>
+              <span class="store-tag">ألبان</span>
+              <span class="store-tag">مشروبات</span>
+              <span class="store-tag">منظفات</span>
+            </div>
+            <div class="commission-badge">💳 الدفع عند الاستلام</div>
+          </div>
+        </div>
+
+        <div class="store-card" onclick="openStore('food1')" data-cat="food">
+          <div class="store-img" style="background:linear-gradient(135deg,#FF6B00,#FF4500)">
+            <span style="font-size:70px">🍗</span>
+            <div class="store-status open">مفتوح</div>
+          </div>
+          <div class="store-info">
+            <h3>كشري الأصيل</h3>
+            <div class="store-meta">
+              <span>⭐ 4.7</span>
+              <span>📦 20-35 دقيقة</span>
+              <span>🛵 7 ج توصيل</span>
+            </div>
+            <div class="store-tags">
+              <span class="store-tag">كشري</span>
+              <span class="store-tag">فول وطعمية</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="store-card" onclick="openStore('pharma1')" data-cat="pharma">
+          <div class="store-img" style="background:linear-gradient(135deg,#3B82F6,#1D4ED8)">
+            <span style="font-size:70px">💊</span>
+            <div class="store-status open">مفتوح</div>
+          </div>
+          <div class="store-info">
+            <h3>صيدلية المنايف</h3>
+            <div class="store-meta">
+              <span>⭐ 4.8</span>
+              <span>📦 10-20 دقيقة</span>
+              <span>🛵 5 ج توصيل</span>
+            </div>
+            <div class="store-tags">
+              <span class="store-tag">أدوية</span>
+              <span class="store-tag">مستلزمات طبية</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="store-card" onclick="" data-cat="shop">
+          <div class="store-img" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9)">
+            <span style="font-size:70px">🏬</span>
+            <div class="store-status busy">مشغول</div>
+          </div>
+          <div class="store-info">
+            <h3>متجر الإلكترونيات</h3>
+            <div class="store-meta">
+              <span>⭐ 4.5</span>
+              <span>📦 30-45 دقيقة</span>
+              <span>🛵 10 ج توصيل</span>
+            </div>
+            <div class="store-tags">
+              <span class="store-tag">إلكترونيات</span>
+              <span class="store-tag">ملحقات</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="custNav('home',this)">
+      <span class="nav-icon">🏠</span>الرئيسية
+    </button>
+    <button class="nav-item" onclick="custNav('search',this)">
+      <span class="nav-icon">🔍</span>بحث
+    </button>
+    <button class="nav-item" onclick="custNav('orders',this)">
+      <span class="nav-icon">📦</span>طلباتي
+    </button>
+    <button class="nav-item" onclick="custNav('rewards',this)">
+      <span class="nav-icon">🏆</span>مكافآت
+    </button>
+    <button class="nav-item" onclick="custNav('profile',this)">
+      <span class="nav-icon">👤</span>حسابي
+    </button>
+  </div>
+</div>
+
+<!-- ==================== DRIVER APP ==================== -->
+<div class="screen" id="screen-driver">
+  <!-- Header -->
+  <div class="driver-header">
+    <div class="driver-welcome">
+      <div>
+        <h2>أهلاً، محمد علي 👋</h2>
+        <p>المندوب رقم #D-0042</p>
+      </div>
+      <div class="online-toggle" onclick="toggleOnline(this)">
+        <div class="toggle-dot online" id="online-dot"></div>
+        <span class="online-label" id="online-label">متاح</span>
+      </div>
+    </div>
+    <div class="driver-stats">
+      <div class="driver-stat">
+        <span class="val">8</span>
+        <span class="lbl">طلبات اليوم</span>
+      </div>
+      <div class="driver-stat">
+        <span class="val">145 ج</span>
+        <span class="lbl">أرباح اليوم</span>
+      </div>
+      <div class="driver-stat">
+        <span class="val">4.9 ⭐</span>
+        <span class="lbl">تقييمي</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Order Notification -->
+  <div class="notification-banner" id="new-order-banner">
+    <div class="notif-icon">🔔</div>
+    <div class="notif-info">
+      <h4>طلب جديد!</h4>
+      <p>أبو سليم هايبر → شارع النيل<br>المسافة: 1.2 كم | الأجر: 15 ج</p>
+    </div>
+    <button class="notif-action" onclick="acceptOrder()">قبول</button>
+  </div>
+
+  <!-- Driver Content by Tab -->
+  <div class="driver-orders" id="drv-home-tab">
+    <div class="section-header">
+      <span class="section-title" style="padding:0">📦 طلبات اليوم</span>
+    </div>
+
+    <div class="order-card">
+      <div class="order-card-header">
+        <span class="order-id">#ORD-2024-001</span>
+        <span class="order-status-badge status-delivering">🟢 جاري التوصيل</span>
+      </div>
+      <div class="order-route">
+        <div class="route-point">
+          <div class="label">الاستلام</div>
+          <div class="value">أبو سليم هايبر</div>
+        </div>
+        <span class="route-arrow">←</span>
+        <div class="route-point" style="text-align:left">
+          <div class="label">التوصيل</div>
+          <div class="value">شارع النيل رقم 5</div>
+        </div>
+      </div>
+      <div class="order-card-footer">
+        <div class="order-earn">15 ج <small>أجر التوصيل</small></div>
+        <button class="mini-btn accept" onclick="showToast('تم تسليم الطلب بنجاح! ✅','success')">تسليم ✓</button>
+      </div>
+    </div>
+
+    <div class="order-card">
+      <div class="order-card-header">
+        <span class="order-id">#ORD-2024-002</span>
+        <span class="order-status-badge status-done">✅ مكتمل</span>
+      </div>
+      <div class="order-route">
+        <div class="route-point">
+          <div class="label">الاستلام</div>
+          <div class="value">صيدلية المنايف</div>
+        </div>
+        <span class="route-arrow">←</span>
+        <div class="route-point" style="text-align:left">
+          <div class="label">التوصيل</div>
+          <div class="value">منطقة المحطة</div>
+        </div>
+      </div>
+      <div class="order-card-footer">
+        <div class="order-earn">12 ج <small>أجر التوصيل</small></div>
+        <span style="font-size:12px;color:var(--text-muted)">⏰ منذ ساعتين</span>
+      </div>
+    </div>
+
+    <div class="order-card">
+      <div class="order-card-header">
+        <span class="order-id">#ORD-2024-003</span>
+        <span class="order-status-badge status-done">✅ مكتمل</span>
+      </div>
+      <div class="order-route">
+        <div class="route-point">
+          <div class="label">الاستلام</div>
+          <div class="value">كشري الأصيل</div>
+        </div>
+        <span class="route-arrow">←</span>
+        <div class="route-point" style="text-align:left">
+          <div class="label">التوصيل</div>
+          <div class="value">حي الصداقة</div>
+        </div>
+      </div>
+      <div class="order-card-footer">
+        <div class="order-earn">10 ج <small>أجر التوصيل</small></div>
+        <span style="font-size:12px;color:var(--text-muted)">⏰ منذ 4 ساعات</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Driver Stats Tab -->
+  <div class="driver-analytics" id="drv-stats-tab" style="display:none">
+    <div class="rating-card">
+      <div class="rating-stars">⭐</div>
+      <div class="rating-info">
+        <span class="rating-num">4.9</span>
+        <span class="rating-sub">تقييمك الإجمالي من 47 تقييم</span>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><span class="s-icon">📦</span><span class="s-val">127</span><span class="s-lbl">إجمالي الطلبات</span></div>
+      <div class="stat-card"><span class="s-icon">💰</span><span class="s-val">1,840 ج</span><span class="s-lbl">أرباح الشهر</span></div>
+      <div class="stat-card"><span class="s-icon">🏆</span><span class="s-val">المرتبة 3</span><span class="s-lbl">في المنطقة</span></div>
+      <div class="stat-card"><span class="s-icon">⏱️</span><span class="s-val">18 دقيقة</span><span class="s-lbl">متوسط التوصيل</span></div>
+    </div>
+    <div class="earnings-chart">
+      <h3>أرباح الأسبوع</h3>
+      <div class="chart-bars">
+        <div class="chart-bar-wrap"><div class="chart-bar" style="height:60%"></div><span class="chart-day">سب</span></div>
+        <div class="chart-bar-wrap"><div class="chart-bar" style="height:80%"></div><span class="chart-day">أح</span></div>
+        <div class="chart-bar-wrap"><div class="chart-bar" style="height:45%"></div><span class="chart-day">اث</span></div>
+        <div class="chart-bar-wrap"><div class="chart-bar" style="height:90%"></div><span class="chart-day">ثل</span></div>
+        <div class="chart-bar-wrap"><div class="chart-bar" style="height:70%"></div><span class="chart-day">أر</span></div>
+        <div class="chart-bar-wrap"><div class="chart-bar" style="height:100%"></div><span class="chart-day">خم</span></div>
+        <div class="chart-bar-wrap"><div class="chart-bar" style="height:55%"></div><span class="chart-day">جم</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Driver Profile Tab -->
+  <div class="driver-profile" id="drv-profile-tab" style="display:none">
+    <div class="profile-card-big">
+      <div class="profile-avatar">👤</div>
+      <div>
+        <h3>محمد علي حسن محمود</h3>
+        <p>مندوب نشط منذ يناير 2025</p>
+        <p style="margin-top:4px;opacity:0.6">📍 المنايف، إسماعيلية</p>
+      </div>
+    </div>
+    <div class="wallet-card">
+      <div class="wallet-balance">
+        <div class="label">رصيد المحفظة</div>
+        <div class="amount">320 ج</div>
+      </div>
+      <button class="withdraw-btn" onclick="showToast('سيتم إضافة ميزة السحب قريباً')">سحب</button>
+    </div>
+    <div class="menu-list">
+      <div class="menu-item"><div class="m-icon">📱</div><div class="m-text"><strong>الإشعارات</strong><small>تفعيل إشعارات الطلبات الجديدة</small></div><div class="m-arrow">←</div></div>
+      <div class="menu-item"><div class="m-icon">📄</div><div class="m-text"><strong>مستنداتي</strong><small>عرض الوثائق المرفوعة</small></div><div class="m-arrow">←</div></div>
+      <div class="menu-item"><div class="m-icon">📊</div><div class="m-text"><strong>تفاصيل الأرباح</strong><small>سجل كامل بالمدفوعات</small></div><div class="m-arrow">←</div></div>
+      <div class="menu-item"><div class="m-icon">⭐</div><div class="m-text"><strong>تقييماتي</strong><small>47 تقييم - ممتاز</small></div><div class="m-arrow">←</div></div>
+      <div class="menu-item" onclick="showScreen('screen-auth')"><div class="m-icon">🚪</div><div class="m-text"><strong style="color:var(--danger)">تسجيل الخروج</strong><small>الخروج من الحساب</small></div><div class="m-arrow">←</div></div>
+    </div>
+  </div>
+
+  <!-- Driver Bottom Nav -->
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="drvNav('home',this)">
+      <span class="nav-icon">🏠</span>الرئيسية
+    </button>
+    <button class="nav-item" onclick="drvNav('stats',this)">
+      <span class="nav-icon">📊</span>إحصائياتي
+    </button>
+    <button class="nav-item" onclick="drvNav('profile',this)">
+      <span class="nav-icon">👤</span>حسابي
+    </button>
+  </div>
+</div>
+
+<!-- ==================== ADMIN PANEL ==================== -->
+<div class="screen" id="screen-admin">
+  <div class="admin-sidebar-mobile">
+    <div class="admin-logo">منايف <span>GO</span> ⚙️</div>
+    <div class="admin-user-info">المدير العام</div>
+  </div>
+  <div class="admin-nav-scroll">
+    <button class="admin-nav-btn active" onclick="adminNav('dashboard',this)">📊 الرئيسية</button>
+    <button class="admin-nav-btn" onclick="adminNav('drivers',this)">🛵 المناديب</button>
+    <button class="admin-nav-btn" onclick="adminNav('stores',this)">🏪 المتاجر</button>
+    <button class="admin-nav-btn" onclick="adminNav('orders',this)">📦 الطلبات</button>
+    <button class="admin-nav-btn" onclick="adminNav('users',this)">👥 العملاء</button>
+    <button class="admin-nav-btn" onclick="adminNav('finance',this)">💰 المالية</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="admin-content" id="admin-dashboard">
+    <div class="kpi-grid">
+      <div class="kpi-card orange" onclick="adminNav('orders',document.querySelector('.admin-nav-btn:nth-child(4)'))">
+        <span class="k-icon">📦</span>
+        <span class="k-val">47</span>
+        <span class="k-lbl">طلبات اليوم</span>
+        <div class="k-change up">↑ +12% من أمس</div>
+      </div>
+      <div class="kpi-card green" onclick="adminNav('finance',document.querySelector('.admin-nav-btn:nth-child(6)'))">
+        <span class="k-icon">💰</span>
+        <span class="k-val">3,240 ج</span>
+        <span class="k-lbl">إيرادات اليوم</span>
+        <div class="k-change up">↑ +8%</div>
+      </div>
+      <div class="kpi-card blue" onclick="adminNav('drivers',document.querySelector('.admin-nav-btn:nth-child(2)'))">
+        <span class="k-icon">🛵</span>
+        <span class="k-val">6</span>
+        <span class="k-lbl">مناديب نشطون</span>
+        <div class="k-change up">من أصل 9</div>
+      </div>
+      <div class="kpi-card yellow" onclick="adminNav('stores',document.querySelector('.admin-nav-btn:nth-child(3)'))">
+        <span class="k-icon">🏪</span>
+        <span class="k-val">4</span>
+        <span class="k-lbl">متاجر مفتوحة</span>
+        <div class="k-change">من أصل 6</div>
+      </div>
+    </div>
+
+    <div class="admin-section-card">
+      <h3>📋 آخر الطلبات <button class="view-all-btn" onclick="adminNav('orders',document.querySelector('.admin-nav-btn:nth-child(4)'))">عرض الكل ←</button></h3>
+      <div class="order-row">
+        <div class="order-row-top"><span class="order-num">#ORD-2024-047</span><span class="order-status-badge status-delivering">جاري التوصيل</span></div>
+        <div class="order-row-bot"><span class="order-store">🏪 أبو سليم هايبر</span><span class="order-total">185 ج <span class="order-commission">(18.5 ج عمولة)</span></span></div>
+      </div>
+      <div class="order-row">
+        <div class="order-row-top"><span class="order-num">#ORD-2024-046</span><span class="order-status-badge status-done">مكتمل</span></div>
+        <div class="order-row-bot"><span class="order-store">💊 صيدلية المنايف</span><span class="order-total">90 ج <span class="order-commission">(9 ج عمولة)</span></span></div>
+      </div>
+      <div class="order-row">
+        <div class="order-row-top"><span class="order-num">#ORD-2024-045</span><span class="order-status-badge status-done">مكتمل</span></div>
+        <div class="order-row-bot"><span class="order-store">🍗 كشري الأصيل</span><span class="order-total">65 ج <span class="order-commission">(6.5 ج عمولة)</span></span></div>
+      </div>
+    </div>
+
+    <div class="admin-section-card">
+      <h3>⚡ النشاط الفوري</h3>
+      <div class="activity-item">
+        <div class="activity-dot green"></div>
+        <div class="activity-info"><p>محمد علي - قبل طلب جديد</p><small>منذ 3 دقائق</small></div>
+        <span class="activity-amount">+15 ج</span>
+      </div>
+      <div class="activity-item">
+        <div class="activity-dot orange"></div>
+        <div class="activity-info"><p>متجر جديد طلب الانضمام</p><small>منذ 15 دقيقة - بانتظار المراجعة</small></div>
+        <button class="mini-btn view" onclick="adminNav('stores',document.querySelector('.admin-nav-btn:nth-child(3)'))">عرض</button>
+      </div>
+      <div class="activity-item">
+        <div class="activity-dot blue"></div>
+        <div class="activity-info"><p>مندوب جديد - طلب تسجيل</p><small>منذ 30 دقيقة</small></div>
+        <button class="mini-btn view" onclick="adminNav('drivers',document.querySelector('.admin-nav-btn:nth-child(2)'))">مراجعة</button>
+      </div>
+    </div>
+
+    <button class="btn-outline" onclick="showScreen('screen-auth')" style="width:100%;padding:14px;border-radius:12px;font-family:'Cairo',sans-serif;font-size:14px;font-weight:700;cursor:pointer;border:2px solid var(--border);background:white;color:var(--danger)">🚪 تسجيل الخروج</button>
+  </div>
+
+  <!-- Drivers Management -->
+  <div class="admin-content" id="admin-drivers" style="display:none">
+    <div class="filter-bar">
+      <button class="filter-chip active" onclick="filterDrivers('all',this)">الكل (9)</button>
+      <button class="filter-chip" onclick="filterDrivers('pending',this)">⏳ بانتظار الموافقة (2)</button>
+      <button class="filter-chip" onclick="filterDrivers('active',this)">🟢 نشط (6)</button>
+      <button class="filter-chip" onclick="filterDrivers('inactive',this)">⚫ غير نشط (1)</button>
+    </div>
+    <div class="admin-section-card">
+      <h3>🛵 قائمة المناديب</h3>
+      <div class="drivers-list" id="drivers-list">
+
+        <div class="driver-row" data-status="pending">
+          <div class="driver-avatar">👤</div>
+          <div class="driver-info">
+            <strong>أحمد محمد سعيد إبراهيم</strong>
+            <small>📱 01012345678 | بانتظار الموافقة</small>
+            <div style="margin-top:4px"><span class="pending-badge">⏳ جديد</span></div>
+          </div>
+          <div class="driver-row-actions">
+            <button class="mini-btn view" onclick="showDriverModal('ahmed')">تفاصيل</button>
+          </div>
+        </div>
+
+        <div class="driver-row" data-status="pending">
+          <div class="driver-avatar">👤</div>
+          <div class="driver-info">
+            <strong>خالد علي حسن عمر</strong>
+            <small>📱 01098765432 | بانتظار الموافقة</small>
+            <div style="margin-top:4px"><span class="pending-badge">⏳ جديد</span></div>
+          </div>
+          <div class="driver-row-actions">
+            <button class="mini-btn view" onclick="showDriverModal('khaled')">تفاصيل</button>
+          </div>
+        </div>
+
+        <div class="driver-row" data-status="active">
+          <div class="driver-avatar">👤</div>
+          <div class="driver-info">
+            <strong>محمد علي حسن محمود</strong>
+            <small>📱 01111111111 | ⭐ 4.9 | 127 توصيلة</small>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="status-dot" style="background:var(--success)"></div>
+            <button class="mini-btn view" onclick="showToast('عرض ملف المندوب')">ملفه</button>
+          </div>
+        </div>
+
+        <div class="driver-row" data-status="active">
+          <div class="driver-avatar">👤</div>
+          <div class="driver-info">
+            <strong>عمرو سامي محمد أحمد</strong>
+            <small>📱 01222222222 | ⭐ 4.6 | 89 توصيلة</small>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="status-dot" style="background:var(--success)"></div>
+            <button class="mini-btn view" onclick="showToast('عرض ملف المندوب')">ملفه</button>
+          </div>
+        </div>
+
+        <div class="driver-row" data-status="inactive">
+          <div class="driver-avatar">👤</div>
+          <div class="driver-info">
+            <strong>يوسف حسام طارق محمود</strong>
+            <small>📱 01333333333 | ⭐ 4.3 | 45 توصيلة</small>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="status-dot" style="background:var(--text-muted)"></div>
+            <button class="mini-btn view" onclick="showToast('عرض ملف المندوب')">ملفه</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Stores Management -->
+  <div class="admin-content" id="admin-stores" style="display:none">
+    <div class="filter-bar">
+      <button class="filter-chip active">الكل (6)</button>
+      <button class="filter-chip">⏳ بانتظار القبول (1)</button>
+      <button class="filter-chip">✅ نشط (4)</button>
+      <button class="filter-chip">❌ مرفوض (1)</button>
+    </div>
+    <div class="admin-section-card">
+      <h3>🏪 إدارة المتاجر</h3>
+
+      <div class="driver-row">
+        <div class="driver-avatar" style="background:#FFF3EB">🏪</div>
+        <div class="driver-info">
+          <strong>أبو سليم هايبر</strong>
+          <small>سوبرماركت | ✅ نشط ومعتمد</small>
+          <div style="margin-top:4px"><span style="background:rgba(16,185,129,0.1);color:var(--success);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">⭐ متجر مميز</span></div>
+        </div>
+        <button class="mini-btn view" onclick="showToast('إدارة أبو سليم هايبر')">إدارة</button>
+      </div>
+
+      <div class="driver-row">
+        <div class="driver-avatar" style="background:#FFF3EB">🍗</div>
+        <div class="driver-info">
+          <strong>كشري الأصيل</strong>
+          <small>مطعم | ✅ نشط</small>
+        </div>
+        <button class="mini-btn view" onclick="showToast('إدارة المطعم')">إدارة</button>
+      </div>
+
+      <div class="driver-row">
+        <div class="driver-avatar" style="background:#EFF6FF">🏬</div>
+        <div class="driver-info">
+          <strong>متجر المستقبل للإلكترونيات</strong>
+          <small>إلكترونيات | ⏳ بانتظار المراجعة</small>
+          <div style="margin-top:4px"><span class="pending-badge">جديد - بانتظار الموافقة</span></div>
+        </div>
+        <div class="driver-row-actions">
+          <button class="mini-btn accept" onclick="showToast('✅ تم قبول المتجر!','success')">قبول</button>
+          <button class="mini-btn reject" onclick="showToast('❌ تم رفض المتجر','error')">رفض</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orders Management -->
+  <div class="admin-content" id="admin-orders" style="display:none">
+    <div class="filter-bar">
+      <button class="filter-chip active">كل الطلبات</button>
+      <button class="filter-chip">اليوم</button>
+      <button class="filter-chip">هذا الأسبوع</button>
+      <button class="filter-chip">هذا الشهر</button>
+    </div>
+    <div class="admin-section-card">
+      <h3>📦 سجل الطلبات</h3>
+      <div class="order-row">
+        <div class="order-row-top"><span class="order-num">#ORD-2024-047</span><span class="order-status-badge status-delivering">جاري التوصيل</span></div>
+        <div class="order-row-bot"><span class="order-store">🏪 أبو سليم هايبر → شارع النيل</span></div>
+        <div style="margin-top:6px;display:flex;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text-muted)">🛵 محمد علي</span>
+          <span><strong>185 ج</strong> <span style="color:var(--primary)">(عمولة: 18.5 ج)</span></span>
+        </div>
+      </div>
+      <div class="order-row">
+        <div class="order-row-top"><span class="order-num">#ORD-2024-046</span><span class="order-status-badge status-done">مكتمل</span></div>
+        <div class="order-row-bot"><span class="order-store">💊 صيدلية المنايف → حي الصداقة</span></div>
+        <div style="margin-top:6px;display:flex;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text-muted)">🛵 عمرو سامي</span>
+          <span><strong>90 ج</strong> <span style="color:var(--primary)">(عمولة: 9 ج)</span></span>
+        </div>
+      </div>
+      <div class="order-row">
+        <div class="order-row-top"><span class="order-num">#ORD-2024-045</span><span class="order-status-badge status-done">مكتمل</span></div>
+        <div class="order-row-bot"><span class="order-store">🍗 كشري الأصيل → المحطة</span></div>
+        <div style="margin-top:6px;display:flex;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text-muted)">🛵 محمد علي</span>
+          <span><strong>65 ج</strong> <span style="color:var(--primary)">(عمولة: 6.5 ج)</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section-card" style="background:linear-gradient(135deg,#1A1A2E,#0F3460);border:none">
+      <h3 style="color:white;font-size:15px">📊 ملخص العمولات - اليوم</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px">
+        <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:22px;font-weight:900;color:var(--primary)">324 ج</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px">إجمالي العمولات</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:22px;font-weight:900;color:var(--accent)">10%</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px">نسبة المنصة</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users -->
+  <div class="admin-content" id="admin-users" style="display:none">
+    <div class="admin-section-card">
+      <h3>👥 إحصائيات العملاء</h3>
+      <div class="stats-grid">
+        <div class="stat-card"><span class="s-icon">👤</span><span class="s-val">234</span><span class="s-lbl">إجمالي العملاء</span></div>
+        <div class="stat-card"><span class="s-icon">🆕</span><span class="s-val">12</span><span class="s-lbl">عملاء جدد اليوم</span></div>
+        <div class="stat-card"><span class="s-icon">🔄</span><span class="s-val">67%</span><span class="s-lbl">العملاء المتكررون</span></div>
+        <div class="stat-card"><span class="s-icon">⭐</span><span class="s-val">4.7</span><span class="s-lbl">متوسط التقييم</span></div>
+      </div>
+    </div>
+    <div class="admin-section-card">
+      <h3>👤 أحدث العملاء</h3>
+      <div class="driver-row">
+        <div class="driver-avatar" style="background:#EFF6FF;font-size:18px">👤</div>
+        <div class="driver-info"><strong>سارة محمد أحمد</strong><small>📱 01055555555 | 8 طلبات</small></div>
+        <span style="font-size:12px;color:var(--success);font-weight:700">عميل VIP</span>
+      </div>
+      <div class="driver-row">
+        <div class="driver-avatar" style="background:#EFF6FF;font-size:18px">👤</div>
+        <div class="driver-info"><strong>هاني علي سعد</strong><small>📱 01066666666 | 3 طلبات</small></div>
+        <span style="font-size:12px;color:var(--text-muted);font-weight:700">عادي</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Finance -->
+  <div class="admin-content" id="admin-finance" style="display:none">
+    <div class="admin-section-card" style="background:linear-gradient(135deg,#1A1A2E,#0F3460);border:none">
+      <h3 style="color:white">💰 الملخص المالي</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:16px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">إيرادات الشهر</div>
+          <div style="font-size:24px;font-weight:900;color:white">87,400 ج</div>
+        </div>
+        <div style="background:rgba(255,107,0,0.3);border-radius:12px;padding:16px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">عمولات المنصة</div>
+          <div style="font-size:24px;font-weight:900;color:var(--primary)">8,740 ج</div>
+        </div>
+      </div>
+    </div>
+    <div class="admin-section-card">
+      <h3>📊 تفاصيل العمولات</h3>
+      <div class="info-row"><span class="lbl">نسبة عمولة المنصة</span><span class="val" style="color:var(--primary)">10%</span></div>
+      <div class="info-row"><span class="lbl">متوسط قيمة الطلب</span><span class="val">127 ج</span></div>
+      <div class="info-row"><span class="lbl">إجمالي مدفوعات المناديب</span><span class="val">12,400 ج</span></div>
+      <div class="info-row"><span class="lbl">أعلى متجر مبيعاً</span><span class="val">أبو سليم هايبر</span></div>
+      <div class="info-row"><span class="lbl">أعلى منطقة طلباً</span><span class="val">شارع النيل</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Driver Details Modal -->
+<div class="modal-overlay" id="driver-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-driver-name">بيانات المندوب</div>
+    <div id="modal-driver-content">
+      <div class="info-row"><span class="lbl">الاسم الرباعي</span><span class="val">أحمد محمد سعيد إبراهيم</span></div>
+      <div class="info-row"><span class="lbl">رقم الهاتف</span><span class="val">01012345678</span></div>
+      <div class="info-row"><span class="lbl">العنوان</span><span class="val">المنايف - شارع الاتحاد</span></div>
+      <div style="margin: 12px 0">
+        <div class="lbl" style="margin-bottom:8px;font-size:13px;font-weight:700">📄 المستندات:</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="doc-preview">🪪<br><small style="font-size:11px">رقم قومي أمامي</small></div>
+          <div class="doc-preview">🪪<br><small style="font-size:11px">رقم قومي خلفي</small></div>
+          <div class="doc-preview">📷<br><small style="font-size:11px">صورة شخصية</small></div>
+          <div class="doc-preview">🏍️<br><small style="font-size:11px">رخصة الموتوسيكل</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" onclick="rejectDriver()">❌ رفض</button>
+      <button class="btn-success" onclick="acceptDriver()">✅ قبول</button>
+    </div>
+    <button class="btn-outline" style="width:100%;margin-top:10px" onclick="closeModal('driver-modal')">إغلاق</button>
+  </div>
+</div>
+
+<script>
+  let currentUser = null;
+  let agreedToTerms = false;
+  let cartItems = 0;
+  let isOnline = true;
+  let selectedType = 'customer';
+  let uploadedDocs = {};
+
+  // ======= AUTH =======
+  function switchAuthTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (tab==='login' && i===0) || (tab==='register' && i===1)));
+    document.getElementById('auth-login').style.display = tab==='login' ? 'block' : 'none';
+    document.getElementById('auth-register').style.display = tab==='register' ? 'block' : 'none';
+  }
+
+  function selectType(type, btn) {
+    selectedType = type;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+
+  function doLogin() {
+    const phone = document.getElementById('login-phone').value;
+    const pass = document.getElementById('login-pass').value;
+    if (!phone || !pass) { showToast('يرجى إدخال رقم الهاتف وكلمة المرور','error'); return; }
+    // Demo: admin login
+    if (phone === '01000000000' && pass === 'admin') { showScreen('screen-admin'); return; }
+    if (phone === '01111111111' && pass === 'driver') { showScreen('screen-driver'); return; }
+    // Default customer
+    showScreen('screen-customer');
+    showToast('أهلاً بك في منايف GO! 🎉','success');
+  }
+
+  function doRegister() {
+    const name = document.getElementById('reg-name').value;
+    const phone = document.getElementById('reg-phone').value;
+    const pass = document.getElementById('reg-pass').value;
+    if (!name || !phone || !pass) { showToast('يرجى تعبئة جميع الحقول','error'); return; }
+    if (selectedType === 'driver') {
+      showScreen('screen-driver-register');
+    } else if (selectedType === 'merchant') {
+      showToast('سيتم التواصل معك لإتمام تسجيل المتجر 📞');
+    } else {
+      showScreen('screen-customer');
+      showToast('تم إنشاء حسابك بنجاح 🎉','success');
+    }
+  }
+
+  function goAdmin() {
+    document.getElementById('login-phone').value = '01000000000';
+    document.getElementById('login-pass').value = 'admin';
+    switchAuthTab('login');
+    showToast('استخدم: 01000000000 / admin');
+  }
+
+  // ======= DRIVER REGISTER =======
+  function simulateUpload(id, msg) {
+    const box = document.getElementById(id);
+    box.classList.add('uploaded');
+    box.innerHTML = `<div class="upload-icon">✅</div><p class="uploaded-text">${msg}</p>`;
+    uploadedDocs[id] = true;
+  }
+
+  function toggleAgree(el) {
+    agreedToTerms = !agreedToTerms;
+    const box = document.getElementById('agree-box');
+    box.style.background = agreedToTerms ? 'var(--success)' : 'white';
+    box.style.borderColor = agreedToTerms ? 'var(--success)' : 'var(--border)';
+    box.innerHTML = agreedToTerms ? '✓' : '';
+    box.style.color = 'white';
+  }
+
+  function submitDriverReg() {
+    const name = document.getElementById('drv-fullname').value;
+    const phone = document.getElementById('drv-phone').value;
+    const addr = document.getElementById('drv-address').value;
+    if (!name || !phone || !addr) { showToast('يرجى تعبئة جميع البيانات الشخصية','error'); return; }
+    if (!agreedToTerms) { showToast('يرجى الموافقة على بنود التعهد','error'); return; }
+    document.getElementById('reg-form-body').style.display = 'none';
+    document.getElementById('reg-pending').style.display = 'block';
+    showToast('تم إرسال طلبك بنجاح! ✅','success');
+  }
+
+  // ======= CUSTOMER =======
+  function filterCat(cat, el) {
+    document.querySelectorAll('.cat-item').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    const cards = document.querySelectorAll('#stores-list .store-card');
+    cards.forEach(c => {
+      if (cat === 'all' || c.dataset.cat === cat) c.style.display = 'block';
+      else c.style.display = 'none';
+    });
+  }
+
+  function openStore(id) {
+    showToast('جاري فتح المتجر... 🏪');
+  }
+
+  function doSearch(val) {
+    const cards = document.querySelectorAll('#stores-list .store-card');
+    cards.forEach(c => {
+      const name = c.querySelector('h3').textContent.toLowerCase();
+      c.style.display = name.includes(val.toLowerCase()) || val === '' ? 'block' : 'none';
+    });
+  }
+
+  function custNav(page, el) {
+    document.querySelectorAll('#screen-customer .nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    if (page === 'rewards') { showToast('صفحة المكافآت - قريباً ⭐'); }
+    else if (page === 'orders') { showToast('طلباتي - قريباً 📦'); }
+    else if (page === 'profile') { showToast('حسابي - قريباً 👤'); }
+    else if (page === 'search') { document.querySelector('#screen-customer .search-bar input').focus(); }
+  }
+
+  function showNotifs() { showToast('🔔 لديك إشعاران جديدان'); }
+  function showCart() { showToast('🛒 سلة التسوق فارغة'); }
+
+  // ======= DRIVER =======
+  function toggleOnline(el) {
+    isOnline = !isOnline;
+    const dot = document.getElementById('online-dot');
+    const lbl = document.getElementById('online-label');
+    dot.className = 'toggle-dot ' + (isOnline ? 'online' : 'offline');
+    lbl.textContent = isOnline ? 'متاح' : 'غير متاح';
+    showToast(isOnline ? '🟢 أنت الآن متاح لاستقبال الطلبات' : '⚫ أنت الآن غير متاح', isOnline ? 'success' : '');
+  }
+
+  function acceptOrder() {
+    const banner = document.getElementById('new-order-banner');
+    banner.style.background = 'linear-gradient(135deg, var(--success), #059669)';
+    banner.querySelector('h4').textContent = '✅ تم قبول الطلب!';
+    banner.querySelector('p').textContent = 'توجه الآن لأبو سليم هايبر لاستلام الطلب';
+    banner.querySelector('.notif-action').style.display = 'none';
+    showToast('تم قبول الطلب بنجاح! 🚀','success');
+  }
+
+  function drvNav(tab, el) {
+    document.querySelectorAll('#screen-driver .nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('drv-home-tab').style.display = tab==='home' ? 'block' : 'none';
+    document.getElementById('drv-stats-tab').style.display = tab==='stats' ? 'block' : 'none';
+    document.getElementById('drv-profile-tab').style.display = tab==='profile' ? 'block' : 'none';
+    document.getElementById('new-order-banner').style.display = tab==='home' ? 'flex' : 'none';
+  }
+
+  // ======= ADMIN =======
+  function adminNav(page, el) {
+    document.querySelectorAll('.admin-nav-btn').forEach(b => b.classList.remove('active'));
+    if (el) el.classList.add('active');
+    const pages = ['dashboard','drivers','stores','orders','users','finance'];
+    pages.forEach(p => {
+      const el2 = document.getElementById('admin-'+p);
+      if (el2) el2.style.display = p===page ? 'block' : 'none';
+    });
+  }
+
+  function filterDrivers(status, btn) {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.driver-row').forEach(r => {
+      if (status === 'all' || r.dataset.status === status) r.style.display = 'flex';
+      else r.style.display = 'none';
+    });
+  }
+
+  function showDriverModal(id) {
+    document.getElementById('driver-modal').classList.add('open');
+  }
+
+  function acceptDriver() {
+    closeModal('driver-modal');
+    showToast('✅ تم قبول المندوب وإعلامه بالقبول','success');
+  }
+
+  function rejectDriver() {
+    closeModal('driver-modal');
+    showToast('❌ تم رفض طلب المندوب','error');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  // ======= HELPERS =======
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0,0);
+  }
+
+  function showToast(msg, type='') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (type ? ' '+type : '');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('open'); });
+  });
+</script>
+</body>
+</html>
