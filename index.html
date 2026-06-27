@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>المنايف - توصيل سريع</title>
+<meta name="theme-color" content="#FF5722">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="المنايف">
+<link rel="manifest" id="manifestLink">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --primary:#FF5722; --primary-dark:#E64A19; --secondary:#1A237E;
+  --accent:#FFC107; --bg:#F5F5F5; --white:#fff; --text:#212121;
+  --text-light:#757575; --border:#E0E0E0; --success:#4CAF50;
+  --shadow:0 2px 12px rgba(0,0,0,0.08);
+}
+body { font-family:'Cairo',sans-serif; background:#1a1a2e; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+.app { width:390px; height:844px; background:var(--bg); border-radius:40px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,0.5); display:flex; flex-direction:column; position:relative; }
+.screen { display:none; flex-direction:column; flex:1; overflow-y:auto; scrollbar-width:none; }
+.screen::-webkit-scrollbar { display:none; }
+.screen.active { display:flex; }
+
+/* SPLASH */
+#splash { background:linear-gradient(160deg,#FF5722,#E64A19 50%,#1A237E); justify-content:center; align-items:center; gap:16px; }
+.splash-logo { font-size:80px; animation:bounce 2s infinite; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+.splash-name { color:#fff; font-size:44px; font-weight:900; }
+.splash-tag { color:rgba(255,255,255,0.8); font-size:15px; }
+.splash-btn { background:#fff; color:var(--primary); border:none; padding:16px 48px; border-radius:50px; font-size:18px; font-weight:700; font-family:'Cairo',sans-serif; cursor:pointer; margin-top:16px; transition:transform .2s; }
+.splash-btn:active { transform:scale(.97); }
+
+/* REGISTER */
+.reg-header { background:linear-gradient(135deg,#FF5722,#E64A19); padding:44px 24px 28px; color:#fff; text-align:center; }
+.reg-body { padding:20px; display:flex; flex-direction:column; gap:14px; background:#fff; flex:1; overflow-y:auto; }
+.field-label { font-size:12px; font-weight:700; color:var(--text-light); margin-bottom:5px; }
+.field-input { display:flex; align-items:center; gap:10px; background:var(--bg); border-radius:14px; padding:13px 16px; }
+.field-input input { border:none; background:transparent; font-family:'Cairo',sans-serif; font-size:15px; width:100%; outline:none; text-align:right; color:var(--text); }
+.type-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.type-card { background:var(--bg); border-radius:16px; padding:16px; text-align:center; cursor:pointer; border:2px solid transparent; transition:all .2s; }
+.type-card.sel { background:#FFF3E0; border-color:var(--primary); }
+.type-card .tc-icon { font-size:34px; }
+.type-card .tc-name { font-size:14px; font-weight:700; margin-top:6px; }
+.type-card .tc-sub { font-size:11px; color:var(--text-light); margin-top:2px; }
+.primary-btn { background:linear-gradient(135deg,#FF5722,#E64A19); color:#fff; border:none; padding:17px; border-radius:16px; font-size:16px; font-weight:700; font-family:'Cairo',sans-serif; cursor:pointer; width:100%; transition:transform .2s; }
+.primary-btn:active { transform:scale(.98); }
+
+/* OTP */
+.otp-boxes { display:flex; gap:12px; direction:ltr; justify-content:center; margin:20px 0; }
+.otp-box { width:62px; height:62px; border:2px solid var(--border); border-radius:16px; font-size:24px; font-weight:700; text-align:center; font-family:'Cairo',sans-serif; outline:none; transition:border-color .2s; }
+.otp-box:focus { border-color:var(--primary); }
+
+/* BOTTOM NAV */
+.bottom-nav { display:flex; background:#fff; border-top:1px solid var(--border); padding:6px 0 2px; flex-shrink:0; }
+.nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; padding:4px; }
+.nav-icon { font-size:22px; }
+.nav-label { font-size:10px; color:var(--text-light); font-family:'Cairo',sans-serif; }
+.nav-item.active .nav-label { color:var(--primary); font-weight:700; }
+
+/* HOME */
+.home-header { background:linear-gradient(135deg,#FF5722,#E64A19); padding:20px 20px 28px; color:#fff; flex-shrink:0; }
+.home-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.loc-pill { display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.2); padding:7px 14px; border-radius:20px; font-size:13px; cursor:pointer; }
+.search-bar { background:#fff; border-radius:16px; padding:12px 16px; display:flex; align-items:center; gap:10px; margin-top:14px; cursor:pointer; }
+.search-bar input { border:none; font-family:'Cairo',sans-serif; font-size:14px; width:100%; outline:none; color:var(--text); text-align:right; }
+
+/* PROMO */
+.promo { margin:14px 16px; background:linear-gradient(135deg,#1A237E,#3949AB); border-radius:20px; padding:14px 18px; color:#fff; display:flex; justify-content:space-between; align-items:center; }
+
+/* CATS */
+.section-title { font-size:16px; font-weight:700; color:var(--text); margin:16px 20px 10px; }
+.cats-scroll { display:flex; gap:12px; padding:0 20px 4px; overflow-x:auto; scrollbar-width:none; }
+.cats-scroll::-webkit-scrollbar { display:none; }
+.cat-item { display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; flex-shrink:0; }
+.cat-circle { width:64px; height:64px; border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:28px; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+.cat-label { font-size:11px; font-weight:600; color:var(--text); }
+
+/* STORE CARDS */
+.stores-list { padding:0 16px 80px; display:flex; flex-direction:column; gap:10px; }
+.store-card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:var(--shadow); cursor:pointer; transition:transform .2s; }
+.store-card:active { transform:scale(.98); }
+.store-banner { height:90px; display:flex; align-items:center; justify-content:center; font-size:44px; position:relative; }
+.store-badge { position:absolute; top:8px; left:8px; background:var(--success); color:#fff; font-size:10px; font-weight:700; padding:3px 8px; border-radius:10px; }
+.store-info { padding:10px 14px 12px; }
+.store-name { font-size:15px; font-weight:700; }
+.store-meta { display:flex; gap:10px; margin-top:5px; }
+.store-meta span { font-size:11px; color:var(--text-light); }
+.rating { color:var(--accent) !important; font-weight:700 !important; }
+
+/* RIDES BANNER */
+.rides-banner { margin:0 16px 14px; background:linear-gradient(135deg,#4A148C,#7B1FA2); border-radius:18px; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+
+/* SEARCH SCREEN */
+.search-header { background:#fff; padding:16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.search-back { font-size:20px; cursor:pointer; }
+.search-input-wrap { flex:1; background:var(--bg); border-radius:14px; padding:10px 14px; display:flex; align-items:center; gap:8px; }
+.search-input-wrap input { border:none; background:transparent; font-family:'Cairo',sans-serif; font-size:14px; width:100%; outline:none; text-align:right; }
+.search-results { padding:12px 16px; display:flex; flex-direction:column; gap:8px; }
+.search-result-item { background:#fff; border-radius:14px; padding:12px 14px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow); cursor:pointer; }
+.result-icon { font-size:28px; }
+.result-info { flex:1; }
+.result-name { font-size:14px; font-weight:700; }
+.result-sub { font-size:11px; color:var(--text-light); margin-top:2px; }
+
+/* STORE DETAIL */
+.store-hero { height:150px; display:flex; align-items:center; justify-content:center; font-size:64px; position:relative; }
+.back-btn { position:absolute; top:12px; right:14px; width:36px; height:36px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.15); font-size:18px; }
+.products-list { padding:0 14px 80px; display:flex; flex-direction:column; gap:8px; }
+.product-card { background:#fff; border-radius:14px; padding:12px; display:flex; gap:10px; align-items:center; box-shadow:var(--shadow); }
+.product-emoji { width:66px; height:66px; background:var(--bg); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:34px; flex-shrink:0; }
+.product-price { font-size:15px; font-weight:900; color:var(--primary); margin-top:4px; }
+.add-btn { background:var(--primary); color:#fff; border:none; width:32px; height:32px; border-radius:10px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+/* CART */
+.cart-float { position:absolute; bottom:72px; left:16px; right:16px; background:var(--primary); color:#fff; padding:14px 20px; border-radius:18px; display:none; justify-content:space-between; align-items:center; box-shadow:0 8px 24px rgba(255,87,34,0.4); cursor:pointer; z-index:100; font-family:'Cairo',sans-serif; }
+.cart-float.show { display:flex; }
+.cart-screen-header { background:#fff; padding:18px 20px; border-bottom:1px solid var(--border); font-size:18px; font-weight:900; display:flex; align-items:center; gap:10px; }
+.cart-items { padding:14px; display:flex; flex-direction:column; gap:8px; }
+.cart-item { background:#fff; border-radius:14px; padding:12px 14px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow); }
+.qty-ctrl { display:flex; align-items:center; gap:8px; background:var(--bg); border-radius:10px; padding:5px 8px; }
+.qty-btn { width:26px; height:26px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-size:16px; cursor:pointer; }
+.summary-box { margin:0 14px 14px; background:#fff; border-radius:18px; padding:14px; box-shadow:var(--shadow); }
+.summary-row { display:flex; justify-content:space-between; font-size:13px; color:var(--text-light); padding:5px 0; }
+.summary-row.total { font-size:15px; font-weight:900; color:var(--text); border-top:1px solid var(--border); margin-top:6px; padding-top:10px; }
+
+/* ADDRESS / MAP */
+.map-container { height:220px; background:#E8F5E9; position:relative; }
+#map { height:100%; width:100%; }
+.map-pin { position:absolute; top:50%; left:50%; transform:translate(-50%,-100%); font-size:32px; z-index:1000; pointer-events:none; }
+.address-form { padding:14px; background:#fff; }
+
+/* TRACKING */
+.tracking-header { background:linear-gradient(135deg,var(--success),#388E3C); padding:22px 20px; color:#fff; flex-shrink:0; }
+.eta-box { background:rgba(255,255,255,0.2); border-radius:14px; padding:12px 16px; margin-top:14px; display:flex; align-items:center; gap:12px; }
+.eta-time { font-size:32px; font-weight:900; }
+.steps { padding:16px 20px; display:flex; flex-direction:column; }
+.step { display:flex; gap:14px; }
+.step-left { display:flex; flex-direction:column; align-items:center; width:36px; flex-shrink:0; }
+.step-dot { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; background:var(--border); flex-shrink:0; }
+.step-dot.done { background:var(--success); }
+.step-dot.active { background:var(--primary); animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,87,34,.4)} 50%{box-shadow:0 0 0 10px rgba(255,87,34,0)} }
+.step-line { width:2px; flex:1; background:var(--border); margin:4px auto; min-height:28px; }
+.step-line.done { background:var(--success); }
+.step-content { padding:7px 0 22px; }
+.step-title { font-size:14px; font-weight:700; }
+.step-sub { font-size:11px; color:var(--text-light); margin-top:2px; }
+.driver-card { margin:0 14px 14px; background:#fff; border-radius:18px; padding:14px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow); }
+.driver-av { width:50px; height:50px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; }
+.call-btn { background:var(--success); color:#fff; border:none; width:42px; height:42px; border-radius:14px; font-size:20px; cursor:pointer; margin-right:auto; }
+
+/* MAP TRACKING */
+.map-track { height:180px; border-radius:18px; overflow:hidden; margin:0 14px 14px; }
+#trackMap { height:100%; width:100%; }
+
+/* PROFILE */
+.profile-header { background:linear-gradient(135deg,#FF5722,#E64A19); padding:32px 20px 24px; color:#fff; text-align:center; }
+.profile-av { width:80px; height:80px; background:rgba(255,255,255,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:40px; margin:0 auto 12px; }
+.profile-menu { padding:16px; display:flex; flex-direction:column; gap:8px; }
+.profile-item { background:#fff; border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow); cursor:pointer; }
+.profile-item-icon { font-size:22px; width:36px; text-align:center; }
+.profile-item-text { flex:1; font-size:14px; font-weight:600; }
+.profile-item-arrow { font-size:16px; color:var(--text-light); }
+
+/* ORDERS HISTORY */
+.orders-header { background:#fff; padding:18px 20px; border-bottom:1px solid var(--border); font-size:18px; font-weight:900; }
+.order-history-item { background:#fff; border-radius:14px; padding:14px 16px; margin:8px 14px 0; box-shadow:var(--shadow); cursor:pointer; }
+.order-h-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.order-h-id { font-size:13px; font-weight:700; color:var(--primary); }
+.order-h-date { font-size:11px; color:var(--text-light); }
+.order-h-store { font-size:14px; font-weight:700; }
+.order-h-items { font-size:12px; color:var(--text-light); margin-top:3px; }
+.order-h-total { font-size:15px; font-weight:900; margin-top:6px; }
+.order-h-status { font-size:11px; font-weight:700; padding:4px 10px; border-radius:10px; }
+.s-delivered { background:#E8F5E9; color:#388E3C; }
+.s-cancelled { background:#FFEBEE; color:#D32F2F; }
+.s-pending { background:#FFF3E0; color:#F57C00; }
+
+/* RIDES */
+.rides-header { background:linear-gradient(135deg,#4A148C,#7B1FA2); padding:20px; color:#fff; flex-shrink:0; }
+.ride-cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:14px; }
+.ride-card { background:#fff; border-radius:18px; padding:16px 12px; text-align:center; cursor:pointer; border:2px solid transparent; box-shadow:var(--shadow); transition:all .2s; }
+.ride-card.sel { border-color:#7B1FA2; background:#F3E5F5; }
+.ride-form-box { margin:0 14px; background:#fff; border-radius:18px; padding:14px; box-shadow:var(--shadow); }
+.ride-input-row { display:flex; align-items:center; gap:10px; background:var(--bg); border-radius:12px; padding:12px; margin-bottom:8px; }
+.ride-input-row input { border:none; background:transparent; font-family:'Cairo',sans-serif; font-size:14px; width:100%; outline:none; text-align:right; }
+.ride-est { margin:10px 14px; background:#F3E5F5; border-radius:14px; padding:12px; display:none; }
+.ride-est.show { display:block; }
+.ride-est-row { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; }
+.ride-est-row span:last-child { font-weight:700; color:#7B1FA2; }
+.book-btn { margin:12px 14px 20px; background:linear-gradient(135deg,#4A148C,#7B1FA2); color:#fff; border:none; padding:16px; border-radius:16px; font-size:16px; font-weight:700; font-family:'Cairo',sans-serif; cursor:pointer; width:calc(100% - 28px); }
+
+/* MERCHANT */
+.merchant-header { background:linear-gradient(135deg,#FF6F00,#F57C00); padding:20px; color:#fff; flex-shrink:0; }
+.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; }
+.stat-card { background:rgba(255,255,255,0.2); border-radius:14px; padding:12px; text-align:center; }
+.stat-val { font-size:22px; font-weight:900; }
+.stat-lbl { font-size:10px; opacity:.8; margin-top:2px; }
+.merchant-orders { padding:14px; display:flex; flex-direction:column; gap:10px; }
+.merch-order { background:#fff; border-radius:16px; padding:14px; box-shadow:var(--shadow); }
+.merch-order-header { display:flex; justify-content:space-between; margin-bottom:8px; }
+.merch-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+.btn-accept { background:var(--success); color:#fff; border:none; padding:10px; border-radius:12px; font-size:13px; font-weight:700; font-family:'Cairo',sans-serif; cursor:pointer; }
+.btn-reject { background:#FFEBEE; color:#D32F2F; border:none; padding:10px; border-radius:12px; font-size:13px; font-weight:700; font-family:'Cairo',sans-serif; cursor:pointer; }
+
+/* DRIVER */
+.driver-header { background:linear-gradient(135deg,#1A237E,#283593); padding:20px; color:#fff; flex-shrink:0; }
+.order-request { margin:14px; background:#fff; border-radius:18px; padding:14px; box-shadow:0 4px 20px rgba(0,0,0,0.1); border:2px solid var(--primary); }
+.new-badge { background:var(--primary); color:#fff; font-size:11px; font-weight:700; padding:4px 10px; border-radius:10px; animation:blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.6} }
+.detail-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; font-size:13px; }
+.driver-act-btns { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+.earnings-list { padding:14px; display:flex; flex-direction:column; gap:8px; }
+.earning-item { background:#fff; border-radius:14px; padding:12px 14px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow); }
+
+/* ADMIN */
+.admin-header { background:linear-gradient(135deg,#212121,#424242); padding:20px; color:#fff; flex-shrink:0; }
+.admin-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:14px; }
+.admin-stat { background:#fff; border-radius:16px; padding:14px; box-shadow:var(--shadow); }
+.admin-stat-icon { font-size:26px; margin-bottom:6px; }
+.admin-stat-val { font-size:22px; font-weight:900; }
+.admin-stat-lbl { font-size:11px; color:var(--text-light); }
+.admin-stat-chg { font-size:10px; color:var(--success); font-weight:600; margin-top:3px; }
+.admin-tabs { display:flex; background:#fff; border-bottom:1px solid var(--border); overflow-x:auto; flex-shrink:0; }
+.admin-tab { flex-shrink:0; padding:10px 16px; font-size:12px; font-weight:700; font-family:'Cairo',sans-serif; cursor:pointer; color:var(--text-light); border-bottom:2px solid transparent; white-space:nowrap; }
+.admin-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+.admin-section { padding:14px; display:none; }
+.admin-section.active { display:block; }
+.admin-table-row { background:#fff; border-radius:12px; padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow); }
+.admin-row-icon { font-size:28px; }
+.admin-row-info { flex:1; }
+.admin-row-name { font-size:13px; font-weight:700; }
+.admin-row-sub { font-size:11px; color:var(--text-light); }
+.status-badge { font-size:10px; font-weight:700; padding:4px 10px; border-radius:10px; }
+.s-active { background:#E8F5E9; color:#388E3C; }
+.s-new { background:#FFF3E0; color:#F57C00; }
+.s-busy { background:#E3F2FD; color:#1976D2; }
+.admin-action-btn { background:var(--primary); color:#fff; border:none; padding:8px 14px; border-radius:10px; font-size:12px; font-weight:700; font-family:'Cairo',sans-serif; cursor:pointer; margin-top:10px; }
+.commission-item { background:#fff; border-radius:14px; padding:14px; margin-bottom:8px; box-shadow:var(--shadow); display:flex; justify-content:space-between; align-items:center; }
+.comm-name { font-size:14px; font-weight:700; }
+.comm-val { font-size:18px; font-weight:900; color:var(--primary); }
+.notif-form { background:#fff; border-radius:16px; padding:16px; box-shadow:var(--shadow); }
+.notif-textarea { width:100%; background:var(--bg); border:none; border-radius:12px; padding:12px; font-family:'Cairo',sans-serif; font-size:14px; resize:none; outline:none; text-align:right; height:100px; }
+
+/* TOAST */
+.toast { position:absolute; top:56px; left:50%; transform:translateX(-50%); background:#212121; color:#fff; padding:10px 20px; border-radius:20px; font-size:13px; font-weight:600; white-space:nowrap; z-index:999; opacity:0; transition:opacity .3s; pointer-events:none; font-family:'Cairo',sans-serif; }
+.toast.show { opacity:1; }
+
+/* INSTALL */
+.install-bar { position:absolute; bottom:0; left:0; right:0; background:#fff; border-radius:24px 24px 0 0; padding:18px; display:none; flex-direction:column; gap:10px; box-shadow:0 -8px 32px rgba(0,0,0,0.15); z-index:1000; }
+.install-bar.show { display:flex; }
+
+/* ABOUT */
+.about-header { background:linear-gradient(135deg,#FF5722,#E64A19); padding:40px 20px 24px; color:#fff; text-align:center; }
+.about-content { padding:20px; }
+.about-section { background:#fff; border-radius:16px; padding:16px; margin-bottom:12px; box-shadow:var(--shadow); }
+.about-title { font-size:14px; font-weight:900; margin-bottom:8px; color:var(--text); }
+.about-text { font-size:13px; color:var(--text-light); line-height:1.8; }
+
+/* GPS BUTTON */
+.gps-btn { background:var(--primary); color:#fff; border:none; padding:10px 16px; border-radius:12px; font-size:13px; font-weight:700; font-family:'Cairo',sans-serif; cursor:pointer; display:flex; align-items:center; gap:6px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="toast" id="toast"></div>
+
+  <!-- INSTALL BAR -->
+  <div class="install-bar" id="installBar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:52px;height:52px;background:linear-gradient(135deg,#FF5722,#E64A19);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;">🛵</div>
+      <div style="flex:1;"><div style="font-size:15px;font-weight:900;">المنايف</div><div style="font-size:12px;color:#757575;">نزّل التطبيق مجاناً</div></div>
+      <button onclick="document.getElementById('installBar').classList.remove('show')" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>
+    </div>
+    <button class="primary-btn" id="installBtn">📲 تثبيت التطبيق</button>
+  </div>
+
+  <!-- SPLASH -->
+  <div class="screen active" id="splash">
+    <div class="splash-logo">🛵</div>
+    <div class="splash-name">المنايف</div>
+    <div class="splash-tag">توصيل سريع لكل حاجة</div>
+    <button class="splash-btn" onclick="showScreen('registerScreen')">ابدأ دلوقتي</button>
+  </div>
+
+  <!-- REGISTER -->
+  <div class="screen" id="registerScreen">
+    <div class="reg-header">
+      <div style="font-size:44px;margin-bottom:8px;">🛵</div>
+      <div style="font-size:22px;font-weight:900;">إنشاء حساب</div>
+      <div style="font-size:13px;opacity:.85;margin-top:4px;">أهلاً بك في تطبيق المنايف</div>
+    </div>
+    <div class="reg-body">
+      <div>
+        <div class="field-label">الاسم الكامل</div>
+        <div class="field-input"><span>👤</span><input id="regName" placeholder="اكتب اسمك هنا" /></div>
+      </div>
+      <div>
+        <div class="field-label">رقم الموبايل</div>
+        <div class="field-input"><span>📱</span><input id="regPhone" type="tel" placeholder="01xxxxxxxxx" /></div>
+      </div>
+      <div>
+        <div class="field-label" style="margin-bottom:10px;">إنت مين؟</div>
+        <div class="type-grid">
+          <div class="type-card sel" id="tc-customer" onclick="selType('customer')">
+            <div class="tc-icon">🛍️</div><div class="tc-name">عميل</div><div class="tc-sub">عايز أطلب</div>
+          </div>
+          <div class="type-card" id="tc-driver" onclick="selType('driver')">
+            <div class="tc-icon">🛵</div><div class="tc-name">مندوب</div><div class="tc-sub">عايز أوصل</div>
+          </div>
+          <div class="type-card" id="tc-merchant" onclick="selType('merchant')">
+            <div class="tc-icon">🏪</div><div class="tc-name">تاجر</div><div class="tc-sub">عندي متجر</div>
+          </div>
+          <div class="type-card" id="tc-admin" onclick="selType('admin')">
+            <div class="tc-icon">📊</div><div class="tc-name">إدارة</div><div class="tc-sub">أدير المنصة</div>
+          </div>
+        </div>
+      </div>
+      <button class="primary-btn" onclick="sendOTP()" style="margin-top:8px;">إرسال كود التحقق 📲</button>
+    </div>
+  </div>
+
+  <!-- OTP -->
+  <div class="screen" id="otpScreen">
+    <div class="reg-header" style="background:linear-gradient(135deg,#1A237E,#283593);">
+      <div style="font-size:44px;margin-bottom:8px;">📱</div>
+      <div style="font-size:22px;font-weight:900;">كود التحقق</div>
+      <div style="font-size:13px;opacity:.85;margin-top:4px;" id="otpSub">تم إرسال كود على رقمك</div>
+    </div>
+    <div style="padding:24px 20px;background:#fff;flex:1;display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div style="background:#E8F5E9;border-radius:14px;padding:14px 20px;text-align:center;width:100%;border-right:4px solid var(--success);">
+        <div style="font-size:13px;font-weight:700;color:#388E3C;">📨 تم إرسال الكود</div>
+        <div style="font-size:12px;color:#757575;margin-top:4px;">كود تجريبي: <strong>1234</strong></div>
+        <div style="font-size:11px;color:#bbb;margin-top:2px;">(في النسخة الحقيقية هيوصل SMS)</div>
+      </div>
+      <div style="font-size:14px;color:var(--text-light);">ادخل الكود المكون من 4 أرقام</div>
+      <div class="otp-boxes">
+        <input class="otp-box" id="otp1" maxlength="1" type="tel" oninput="otpNext(this,'otp2')"/>
+        <input class="otp-box" id="otp2" maxlength="1" type="tel" oninput="otpNext(this,'otp3')"/>
+        <input class="otp-box" id="otp3" maxlength="1" type="tel" oninput="otpNext(this,'otp4')"/>
+        <input class="otp-box" id="otp4" maxlength="1" type="tel" oninput="otpNext(this,null)"/>
+      </div>
+      <div style="font-size:13px;color:var(--primary);cursor:pointer;" onclick="showToast('تم إعادة الإرسال ✅')">إعادة إرسال الكود</div>
+      <button class="primary-btn" onclick="verifyOTP()" style="width:100%;margin-top:8px;">تأكيد ✅</button>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="screen" id="homeScreen">
+    <div class="home-header">
+      <div class="home-top">
+        <div class="loc-pill" onclick="openGPS()">📍 <span id="userLocText">المنايف، الإسماعيلية</span></div>
+        <div style="font-size:24px;cursor:pointer;" onclick="showToast('لا توجد إشعارات جديدة')">🔔</div>
+      </div>
+      <div style="font-size:20px;font-weight:900;">أهلاً يا <span id="userName">محمد</span> 👋</div>
+      <div style="font-size:13px;opacity:.85;margin-top:2px;">عايز إيه النهارده؟</div>
+      <div class="search-bar" onclick="showScreen('searchScreen');document.getElementById('mainSearch').focus()">
+        <span>🔍</span><input id="mainSearch" placeholder="ابحث عن أكل، دواء، بقالة..." readonly />
+      </div>
+    </div>
+
+    <div class="promo">
+      <div><div style="font-size:15px;font-weight:900;">أول طلب مجاناً! 🎉</div><div style="font-size:11px;opacity:.8;margin-top:3px;">كود: MANAYEF</div></div>
+      <div style="font-size:40px;">🎁</div>
+    </div>
+
+    <div class="section-title">التصنيفات</div>
+    <div class="cats-scroll">
+      <div class="cat-item" onclick="filterStores('مطاعم')"><div class="cat-circle" style="background:#FFF3E0;">🍕</div><span class="cat-label">مطاعم</span></div>
+      <div class="cat-item" onclick="filterStores('سوبرماركت')"><div class="cat-circle" style="background:#E8F5E9;">🛒</div><span class="cat-label">سوبرماركت</span></div>
+      <div class="cat-item" onclick="filterStores('صيدليات')"><div class="cat-circle" style="background:#E3F2FD;">💊</div><span class="cat-label">صيدليات</span></div>
+      <div class="cat-item" onclick="filterStores('مخابز')"><div class="cat-circle" style="background:#FCE4EC;">🥖</div><span class="cat-label">مخابز</span></div>
+      <div class="cat-item" onclick="filterStores('خضار')"><div class="cat-circle" style="background:#F3E5F5;">🥦</div><span class="cat-label">خضار</span></div>
+      <div class="cat-item" onclick="filterStores('كافيهات')"><div class="cat-circle" style="background:#E0F2F1;">☕</div><span class="cat-label">كافيهات</span></div>
+      <div class="cat-item" onclick="showScreen('ridesScreen')"><div class="cat-circle" style="background:#EDE7F6;">🛵</div><span class="cat-label">مشاوير</span></div>
+    </div>
+
+    <div class="rides-banner" onclick="showScreen('ridesScreen')">
+      <div><div style="color:#fff;font-size:15px;font-weight:900;">مشاوير المنايف 🛵🚗</div><div style="color:rgba(255,255,255,0.8);font-size:11px;margin-top:3px;">موتوسيكل · عربية · توك توك · ميكروباص</div><div style="background:#fff;color:#7B1FA2;font-size:11px;font-weight:700;padding:4px 12px;border-radius:10px;margin-top:8px;display:inline-block;">احجز دلوقتي ←</div></div>
+      <div style="font-size:48px;">🛵</div>
+    </div>
+
+    <div class="section-title">متاجر قريبة منك</div>
+    <div class="stores-list" id="storesList"></div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="screen" id="searchScreen">
+    <div class="search-header">
+      <span class="search-back" onclick="showScreen('homeScreen')">→</span>
+      <div class="search-input-wrap">
+        <span>🔍</span>
+        <input id="searchInput" placeholder="ابحث..." oninput="doSearch(this.value)" />
+      </div>
+    </div>
+    <div class="search-results" id="searchResults">
+      <div style="text-align:center;padding:40px;color:var(--text-light);">
+        <div style="font-size:48px;margin-bottom:12px;">🔍</div>
+        <div>ابحث عن أي متجر أو منتج</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORE DETAIL -->
+  <div class="screen" id="storeScreen">
+    <div class="store-hero" id="storeHero">
+      <div class="back-btn" onclick="showScreen('homeScreen')">→</div>
+    </div>
+    <div style="background:#fff;padding:14px 16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:20px;font-weight:900;" id="storeDetailName"></div>
+      <div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-light);" id="storeDetailMeta"></span>
+      </div>
+    </div>
+    <div style="padding:12px 16px 0;font-size:14px;font-weight:700;">المنتجات</div>
+    <div class="products-list" id="productsList"></div>
+  </div>
+
+  <!-- CART FLOAT -->
+  <div class="cart-float" id="cartFloat" onclick="showScreen('cartScreen')">
+    <span id="cartFloatCount">🛒 0 منتجات</span>
+    <span id="cartFloatTotal">0 جنيه ←</span>
+  </div>
+
+  <!-- CART -->
+  <div class="screen" id="cartScreen">
+    <div class="cart-screen-header">
+      <span onclick="showScreen('storeScreen')" style="cursor:pointer;">→</span> سلة الطلبات 🛒
+    </div>
+    <div class="cart-items" id="cartItemsList"></div>
+    <div class="summary-box">
+      <div class="summary-row"><span>المجموع</span><span id="cartSubtotal">0 جنيه</span></div>
+      <div class="summary-row"><span>التوصيل</span><span>5 جنيه</span></div>
+      <div class="summary-row total"><span>الإجمالي</span><span id="cartTotal">5 جنيه</span></div>
+    </div>
+    <button class="primary-btn" style="margin:0 14px 14px;" onclick="showScreen('addressScreen')">تحديد العنوان 📍</button>
+  </div>
+
+  <!-- ADDRESS -->
+  <div class="screen" id="addressScreen">
+    <div style="background:#fff;padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+      <span onclick="showScreen('cartScreen')" style="cursor:pointer;font-size:20px;">→</span>
+      <span style="font-size:16px;font-weight:900;">📍 تحديد العنوان</span>
+    </div>
+    <div class="map-container"><div id="map"></div><div class="map-pin">📍</div></div>
+    <div class="address-form">
+      <button class="gps-btn" onclick="getMyLocation()" style="margin-bottom:12px;width:100%;justify-content:center;">
+        📡 استخدم موقعي الحالي
+      </button>
+      <div style="font-size:12px;font-weight:700;color:var(--text-light);margin-bottom:6px;">العنوان بالتفصيل</div>
+      <div class="field-input" style="margin-bottom:12px;">
+        <span>🏠</span>
+        <input id="addressDetail" placeholder="مثال: شارع الجيش، منزل 12، دور 2" style="border:none;background:transparent;font-family:'Cairo',sans-serif;font-size:14px;width:100%;outline:none;text-align:right;" />
+      </div>
+      <div style="background:#F5F5F5;border-radius:12px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--text-light);" id="detectedAddress">
+        📍 الموقع: المنايف، الإسماعيلية
+      </div>
+      <button class="primary-btn" onclick="placeOrder()">تأكيد الطلب 💵 دفع عند الاستلام</button>
+    </div>
+  </div>
+
+  <!-- TRACKING -->
+  <div class="screen" id="trackingScreen">
+    <div class="tracking-header">
+      <div style="font-size:18px;font-weight:900;">✅ تم استلام طلبك!</div>
+      <div style="font-size:12px;opacity:.8;margin-top:3px;" id="trackOrderId">طلب رقم #MAN-0000</div>
+      <div class="eta-box">
+        <div><div class="eta-time">28 د</div><div style="font-size:11px;opacity:.8;">وقت التوصيل</div></div>
+        <div style="font-size:32px;margin-right:auto;">🛵</div>
+      </div>
+    </div>
+    <div class="map-track"><div id="trackMap"></div></div>
+    <div class="steps">
+      <div class="step"><div class="step-left"><div class="step-dot done">✓</div><div class="step-line done"></div></div><div class="step-content"><div class="step-title">تم استلام الطلب</div><div class="step-sub" id="orderTime"></div></div></div>
+      <div class="step"><div class="step-left"><div class="step-dot active">🍳</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">جاري التحضير</div><div class="step-sub">المتجر بيجهز طلبك</div></div></div>
+      <div class="step"><div class="step-left"><div class="step-dot">🛵</div><div class="step-line"></div></div><div class="step-content"><div class="step-title">في الطريق إليك</div><div class="step-sub">المندوب جاي</div></div></div>
+      <div class="step"><div class="step-left"><div class="step-dot">🏠</div></div><div class="step-content"><div class="step-title">تم التوصيل</div><div class="step-sub">استمتع بطلبك!</div></div></div>
+    </div>
+    <div class="driver-card">
+      <div class="driver-av">👨</div>
+      <div style="flex:1;"><div style="font-size:14px;font-weight:700;">أحمد محمد</div><div style="font-size:11px;color:var(--text-light);">⭐ 4.9 · موتوسيكل هوندا أبيض</div></div>
+      <button class="call-btn" onclick="showToast('جاري الاتصال... 📞')">📞</button>
+    </div>
+    <button class="primary-btn" style="margin:0 14px 20px;" onclick="goHome()">🏠 العودة للرئيسية</button>
+  </div>
+
+  <!-- ORDERS HISTORY -->
+  <div class="screen" id="ordersScreen">
+    <div class="orders-header">📦 طلباتي</div>
+    <div id="orderHistoryList" style="padding-bottom:80px;"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="screen" id="profileScreen">
+    <div class="profile-header">
+      <div class="profile-av">👤</div>
+      <div style="font-size:20px;font-weight:900;" id="profileName">محمد</div>
+      <div style="font-size:13px;opacity:.8;margin-top:3px;" id="profilePhone">01xxxxxxxxx</div>
+    </div>
+    <div class="profile-menu">
+      <div class="profile-item" onclick="showScreen('ordersScreen')"><span class="profile-item-icon">📦</span><span class="profile-item-text">طلباتي السابقة</span><span class="profile-item-arrow">←</span></div>
+      <div class="profile-item" onclick="showToast('قريباً 🔜')"><span class="profile-item-icon">💳</span><span class="profile-item-text">محفظتي</span><span class="profile-item-arrow">←</span></div>
+      <div class="profile-item" onclick="showToast('قريباً 🔜')"><span class="profile-item-icon">⭐</span><span class="profile-item-text">تقييماتي</span><span class="profile-item-arrow">←</span></div>
+      <div class="profile-item" onclick="showToast('قريباً 🔜')"><span class="profile-item-icon">🎁</span><span class="profile-item-text">كوبوناتي</span><span class="profile-item-arrow">←</span></div>
+      <div class="profile-item" onclick="showToast('قريباً 🔜')"><span class="profile-item-icon">🔔</span><span class="profile-item-text">الإشعارات</span><span class="profile-item-arrow">←</span></div>
+      <div class="profile-item" onclick="showScreen('aboutScreen')"><span class="profile-item-icon">ℹ️</span><span class="profile-item-text">حول التطبيق</span><span class="profile-item-arrow">←</span></div>
+      <div class="profile-item" onclick="logout()" style="border:1px solid #FFEBEE;"><span class="profile-item-icon">🚪</span><span class="profile-item-text" style="color:#D32F2F;">تسجيل الخروج</span><span class="profile-item-arrow">←</span></div>
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <div class="screen" id="aboutScreen">
+    <div class="about-header">
+      <div style="font-size:60px;margin-bottom:8px;">🛵</div>
+      <div style="font-size:26px;font-weight:900;">المنايف</div>
+      <div style="font-size:13px;opacity:.8;margin-top:4px;">الإصدار 1.0.0</div>
+    </div>
+    <div class="about-content" style="padding-bottom:20px;">
+      <div onclick="showScreen('profileScreen')" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer;color:var(--primary);font-weight:700;">→ رجوع</div>
+      <div class="about-section">
+        <div class="about-title">🎯 عن التطبيق</div>
+        <div class="about-text">تطبيق المنايف هو منصة توصيل محلية مخصصة لمنطقة المنايف بمحافظة الإسماعيلية. يهدف التطبيق لتوفير خدمة توصيل سريعة وموثوقة من المطاعم والمتاجر والصيدليات.</div>
+      </div>
+      <div class="about-section">
+        <div class="about-title">✨ المميزات</div>
+        <div class="about-text">• توصيل من المطاعم والمتاجر والصيدليات<br>• مشاوير بالموتوسيكل والعربية والتوك توك<br>• تتبع الطلب لحظة بلحظة<br>• دفع نقدي عند الاستلام<br>• تحديد الموقع بـ GPS</div>
+      </div>
+      <div class="about-section">
+        <div class="about-title">📞 تواصل معنا</div>
+        <div class="about-text">واتساب: 01000000000<br>فيسبوك: المنايف توصيل<br>الإسماعيلية - المنايف</div>
+      </div>
+      <div class="about-section">
+        <div class="about-title">⚖️ الشروط والأحكام</div>
+        <div class="about-text">باستخدامك للتطبيق فأنت توافق على شروط الخدمة. جميع الحقوق محفوظة © 2026 المنايف.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIDES -->
+  <div class="screen" id="ridesScreen">
+    <div class="rides-header">
+      <div onclick="goHome()" style="cursor:pointer;margin-bottom:8px;font-size:13px;">→ رجوع</div>
+      <div style="font-size:20px;font-weight:900;">🛵 مشاوير المنايف</div>
+      <div style="font-size:13px;opacity:.8;margin-top:3px;">اختار نوع المشوار</div>
+    </div>
+    <div style="overflow-y:auto;padding-bottom:20px;">
+      <div style="padding:12px 14px 4px;font-size:14px;font-weight:700;">اختار نوع الركوب</div>
+      <div class="ride-cards">
+        <div class="ride-card sel" id="rc-moto" onclick="selRide('moto')"><div style="font-size:36px;">🛵</div><div style="font-size:14px;font-weight:700;margin-top:6px;">موتوسيكل</div><div style="font-size:11px;color:var(--text-light);">أسرع وأرخص</div><div style="font-size:13px;font-weight:700;color:#7B1FA2;margin-top:6px;">من 10 جنيه</div></div>
+        <div class="ride-card" id="rc-car" onclick="selRide('car')"><div style="font-size:36px;">🚗</div><div style="font-size:14px;font-weight:700;margin-top:6px;">عربية</div><div style="font-size:11px;color:var(--text-light);">مريح ومكيف</div><div style="font-size:13px;font-weight:700;color:#7B1FA2;margin-top:6px;">من 25 جنيه</div></div>
+        <div class="ride-card" id="rc-tuk" onclick="selRide('tuk')"><div style="font-size:36px;">🛺</div><div style="font-size:14px;font-weight:700;margin-top:6px;">توك توك</div><div style="font-size:11px;color:var(--text-light);">للمسافات القريبة</div><div style="font-size:13px;font-weight:700;color:#7B1FA2;margin-top:6px;">من 7 جنيه</div></div>
+        <div class="ride-card" id="rc-van" onclick="selRide('van')"><div style="font-size:36px;">🚐</div><div style="font-size:14px;font-weight:700;margin-top:6px;">ميكروباص</div><div style="font-size:11px;color:var(--text-light);">للمجموعات</div><div style="font-size:13px;font-weight:700;color:#7B1FA2;margin-top:6px;">من 40 جنيه</div></div>
+      </div>
+      <div class="ride-form-box">
+        <div style="font-size:14px;font-weight:700;margin-bottom:10px;">📍 حدد الرحلة</div>
+        <div class="ride-input-row"><span>🟢</span><input id="rideFrom" placeholder="من فين؟" oninput="calcRide()"/></div>
+        <div class="ride-input-row"><span>🔴</span><input id="rideTo" placeholder="لفين؟" oninput="calcRide()"/></div>
+        <button class="gps-btn" onclick="getRideLocation()" style="width:100%;justify-content:center;margin-top:4px;">📡 موقعي الحالي كنقطة البداية</button>
+      </div>
+      <div class="ride-est" id="rideEst">
+        <div class="ride-est-row"><span>⏱ الوقت</span><span id="estTime">-</span></div>
+        <div class="ride-est-row"><span>📏 المسافة</span><span id="estDist">-</span></div>
+        <div class="ride-est-row"><span>💰 السعر</span><span id="estPrice">-</span></div>
+      </div>
+      <button class="book-btn" onclick="bookRide()">🛵 احجز دلوقتي</button>
+    </div>
+  </div>
+
+  <!-- RIDE TRACKING -->
+  <div class="screen" id="rideTrackScreen">
+    <div style="background:linear-gradient(135deg,#4A148C,#7B1FA2);padding:22px 20px;color:#fff;flex-shrink:0;">
+      <div style="font-size:18px;font-weight:900;">✅ تم تأكيد الحجز!</div>
+      <div style="background:rgba(255,255,255,0.2);border-radius:14px;padding:12px 16px;margin-top:12px;display:flex;align-items:center;gap:12px;">
+        <div><div style="font-size:30px;font-weight:900;" id="rideEtaVal">3 د</div><div style="font-size:11px;opacity:.8;">السائق وصالك في</div></div>
+        <div style="font-size:32px;margin-right:auto;" id="rideIcon">🛵</div>
+      </div>
+    </div>
+    <div style="margin:12px;background:#fff;border-radius:18px;padding:14px;box-shadow:var(--shadow);">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="width:52px;height:52px;background:linear-gradient(135deg,#4A148C,#7B1FA2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">🧔</div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:700;" id="rideDriverName">محمود السائق</div><div style="font-size:12px;color:var(--text-light);">⭐ 4.8 · 342 رحلة</div><div style="background:#F5F5F5;border:1px solid #DDD;border-radius:8px;padding:3px 10px;font-size:13px;font-weight:700;display:inline-block;margin-top:4px;" id="ridePlate">أ ب ج 1234</div></div>
+        <button class="call-btn" onclick="showToast('جاري الاتصال... 📞')">📞</button>
+      </div>
+      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;"><span style="width:10px;height:10px;background:var(--success);border-radius:50%;display:inline-block;flex-shrink:0;"></span><span id="rideFromText">موقعك الحالي</span></div>
+        <div style="border-right:2px dashed #DDD;height:14px;margin-right:4px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;"><span style="width:10px;height:10px;background:var(--primary);border-radius:50%;display:inline-block;flex-shrink:0;"></span><span id="rideToText">وجهتك</span></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="showToast('تم إلغاء الرحلة')" style="flex:1;padding:11px;background:#FFEBEE;color:#D32F2F;border:none;border-radius:12px;font-size:13px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;">إلغاء</button>
+        <button onclick="showToast('تمت المشاركة ✅')" style="flex:1;padding:11px;background:#E8F5E9;color:#388E3C;border:none;border-radius:12px;font-size:13px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;">مشاركة</button>
+      </div>
+    </div>
+    <div style="margin:0 12px;background:#fff;border-radius:16px;padding:14px;box-shadow:var(--shadow);">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">💰 السعر</div>
+      <div class="summary-row"><span>سعر الرحلة</span><span id="ridePriceVal" style="font-weight:700;color:var(--primary);">15 جنيه</span></div>
+      <div class="summary-row"><span>الدفع</span><span>💵 كاش عند الوصول</span></div>
+    </div>
+    <button class="primary-btn" style="margin:12px;" onclick="goHome()">🏠 الرئيسية</button>
+  </div>
+
+  <!-- MERCHANT -->
+  <div class="screen" id="merchantScreen">
+    <div class="merchant-header">
+      <div style="font-size:13px;opacity:.8;">مرحباً،</div>
+      <div style="font-size:20px;font-weight:900;" id="merchantName">مطعم الشيف محمد 🍖</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-val">1,240</div><div class="stat-lbl">مبيعات اليوم</div></div>
+        <div class="stat-card"><div class="stat-val">12</div><div class="stat-lbl">طلب اليوم</div></div>
+        <div class="stat-card"><div class="stat-val">🟢</div><div class="stat-lbl">مفتوح</div></div>
+      </div>
+    </div>
+    <div style="overflow-y:auto;padding-bottom:20px;">
+      <div class="section-title">📥 الطلبات الواردة</div>
+      <div class="merchant-orders">
+        <div class="merch-order">
+          <div class="merch-order-header"><span style="font-size:13px;font-weight:700;color:var(--primary);">#MAN-2847</span><span style="background:#FFF3E0;color:#F57C00;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;">جديد 🔴</span></div>
+          <div style="font-size:13px;color:var(--text);margin-bottom:6px;">فراخ مشوية × 2 — كفتة × 1</div>
+          <div style="font-size:11px;color:var(--text-light);margin-bottom:6px;">📍 شارع الجيش، منزل 12</div>
+          <div style="font-size:15px;font-weight:900;margin-bottom:8px;">الإجمالي: 210 جنيه</div>
+          <div class="merch-btns">
+            <button class="btn-accept" onclick="showToast('✅ تم قبول الطلب!')">✅ قبول</button>
+            <button class="btn-reject" onclick="showToast('تم رفض الطلب')">❌ رفض</button>
+          </div>
+        </div>
+        <div class="merch-order">
+          <div class="merch-order-header"><span style="font-size:13px;font-weight:700;color:var(--primary);">#MAN-2846</span><span style="background:#E3F2FD;color:#1976D2;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;">جاري التحضير</span></div>
+          <div style="font-size:13px;color:var(--text);margin-bottom:6px;">بيتزا مشكل × 1 — سلطة × 2</div>
+          <div style="font-size:11px;color:var(--text-light);margin-bottom:6px;">📍 المنايف مركز</div>
+          <div style="font-size:15px;font-weight:900;margin-bottom:8px;">الإجمالي: 175 جنيه</div>
+          <div class="merch-btns">
+            <button class="btn-accept" onclick="showToast('🍳 جاري التحضير')" style="background:#1976D2;">🍳 جاري التحضير</button>
+            <button class="btn-accept" onclick="showToast('✅ الطلب جاهز!')">✅ جاهز للتوصيل</button>
+          </div>
+        </div>
+      </div>
+      <div class="section-title">📊 إحصائيات اليوم</div>
+      <div style="padding:0 14px 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:#fff;border-radius:14px;padding:14px;box-shadow:var(--shadow);text-align:center;"><div style="font-size:22px;font-weight:900;color:var(--primary);">12</div><div style="font-size:11px;color:var(--text-light);margin-top:3px;">طلب مكتمل</div></div>
+        <div style="background:#fff;border-radius:14px;padding:14px;box-shadow:var(--shadow);text-align:center;"><div style="font-size:22px;font-weight:900;color:var(--success);">1,240</div><div style="font-size:11px;color:var(--text-light);margin-top:3px;">جنيه مبيعات</div></div>
+        <div style="background:#fff;border-radius:14px;padding:14px;box-shadow:var(--shadow);text-align:center;"><div style="font-size:22px;font-weight:900;color:#1976D2;">2</div><div style="font-size:11px;color:var(--text-light);margin-top:3px;">طلب ملغي</div></div>
+        <div style="background:#fff;border-radius:14px;padding:14px;box-shadow:var(--shadow);text-align:center;"><div style="font-size:22px;font-weight:900;color:var(--accent);">4.8 ⭐</div><div style="font-size:11px;color:var(--text-light);margin-top:3px;">تقييمي</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DRIVER -->
+  <div class="screen" id="driverScreen">
+    <div class="driver-header">
+      <div style="font-size:13px;opacity:.8;">أهلاً،</div>
+      <div style="font-size:20px;font-weight:900;" id="driverName">أحمد المندوب 🛵</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-val">340</div><div class="stat-lbl">أرباح اليوم</div></div>
+        <div class="stat-card"><div class="stat-val">8</div><div class="stat-lbl">توصيلات</div></div>
+        <div class="stat-card"><div class="stat-val">⭐4.9</div><div class="stat-lbl">تقييمي</div></div>
+      </div>
+    </div>
+    <div style="overflow-y:auto;padding-bottom:20px;">
+      <div style="padding:14px;">
+        <div class="order-request">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:15px;font-weight:700;">🔔 طلب جديد!</div>
+            <div class="new-badge">جديد 🔴</div>
+          </div>
+          <div class="detail-row"><span style="font-size:18px;">🏪</span><div><div style="font-size:11px;color:var(--text-light);">من</div><div style="font-weight:600;">مطعم الشيف محمد</div></div></div>
+          <div class="detail-row"><span style="font-size:18px;">📍</span><div><div style="font-size:11px;color:var(--text-light);">إلى</div><div style="font-weight:600;">المنايف، شارع الجيش - منزل 12</div></div></div>
+          <div class="detail-row"><span style="font-size:18px;">📏</span><div><div style="font-size:11px;color:var(--text-light);">المسافة</div><div style="font-weight:600;">2.3 كم</div></div></div>
+          <div class="detail-row"><span style="font-size:18px;">💰</span><div><div style="font-size:11px;color:var(--text-light);">مكسبك</div><div style="font-size:18px;font-weight:900;color:var(--success);">25 جنيه</div></div></div>
+          <div class="driver-act-btns">
+            <button class="btn-accept" style="padding:14px;" onclick="showToast('✅ تم قبول الطلب! 🛵')">✅ قبول</button>
+            <button class="btn-reject" style="padding:14px;" onclick="showToast('تم رفض الطلب')">رفض</button>
+          </div>
+        </div>
+      </div>
+      <div class="section-title">💰 أرباح اليوم</div>
+      <div class="earnings-list">
+        <div class="earning-item"><span style="font-size:28px;">🛵</span><div style="flex:1;"><div style="font-size:13px;font-weight:700;">مطعم الشيف محمد ← شارع الجيش</div><div style="font-size:11px;color:var(--text-light);">منذ ساعة</div></div><span style="font-size:16px;font-weight:900;color:var(--success);">+25 ج</span></div>
+        <div class="earning-item"><span style="font-size:28px;">🛵</span><div style="flex:1;"><div style="font-size:13px;font-weight:700;">صيدلية النور ← المنايف مركز</div><div style="font-size:11px;color:var(--text-light);">منذ ساعتين</div></div><span style="font-size:16px;font-weight:900;color:var(--success);">+20 ج</span></div>
+        <div class="earning-item"><span style="font-size:28px;">🛵</span><div style="flex:1;"><div style="font-size:13px;font-weight:700;">سوبرماركت العائلة ← أبو صوير</div><div style="font-size:11px;color:var(--text-light);">منذ 3 ساعات</div></div><span style="font-size:16px;font-weight:900;color:var(--success);">+30 ج</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="screen" id="adminScreen">
+    <div class="admin-header">
+      <div style="font-size:18px;font-weight:900;">📊 لوحة تحكم المنايف</div>
+      <div style="font-size:12px;opacity:.7;margin-top:3px;">السبت، 27 يونيو 2026</div>
+    </div>
+    <div class="admin-stats">
+      <div class="admin-stat"><div class="admin-stat-icon">🛒</div><div class="admin-stat-val">47</div><div class="admin-stat-lbl">طلبات اليوم</div><div class="admin-stat-chg">↑ 12% من أمس</div></div>
+      <div class="admin-stat"><div class="admin-stat-icon">💰</div><div class="admin-stat-val">4,820</div><div class="admin-stat-lbl">مبيعات (جنيه)</div><div class="admin-stat-chg">↑ 8% من أمس</div></div>
+      <div class="admin-stat"><div class="admin-stat-icon">🛵</div><div class="admin-stat-val">6</div><div class="admin-stat-lbl">مندوبين نشطين</div><div class="admin-stat-chg" style="color:var(--success);">جميعهم متاحين</div></div>
+      <div class="admin-stat"><div class="admin-stat-icon">🏪</div><div class="admin-stat-val">14</div><div class="admin-stat-lbl">متاجر مفتوحة</div><div class="admin-stat-chg" style="color:var(--success);">من أصل 18</div></div>
+    </div>
+    <div class="admin-tabs" id="adminTabs">
+      <div class="admin-tab active" onclick="switchAdminTab('orders')">📋 الطلبات</div>
+      <div class="admin-tab" onclick="switchAdminTab('merchants')">🏪 التجار</div>
+      <div class="admin-tab" onclick="switchAdminTab('drivers')">🛵 المندوبين</div>
+      <div class="admin-tab" onclick="switchAdminTab('customers')">👥 العملاء</div>
+      <div class="admin-tab" onclick="switchAdminTab('commissions')">💰 العمولات</div>
+      <div class="admin-tab" onclick="switchAdminTab('notifications')">📢 إشعارات</div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding-bottom:20px;">
+      <!-- ORDERS TAB -->
+      <div class="admin-section active" id="tab-orders">
+        <div class="admin-table-row"><div class="admin-row-icon">🛒</div><div class="admin-row-info"><div class="admin-row-name">#2847 — محمد أحمد</div><div class="admin-row-sub">مطعم الشيف محمد · 210 جنيه</div></div><span class="status-badge s-busy">جاري التحضير</span></div>
+        <div class="admin-table-row"><div class="admin-row-icon">🛒</div><div class="admin-row-info"><div class="admin-row-name">#2846 — فاطمة علي</div><div class="admin-row-sub">صيدلية النور · 85 جنيه</div></div><span class="status-badge s-active">في الطريق</span></div>
+        <div class="admin-table-row"><div class="admin-row-icon">🛒</div><div class="admin-row-info"><div class="admin-row-name">#2845 — سامي حسن</div><div class="admin-row-sub">سوبرماركت العائلة · 320 جنيه</div></div><span class="status-badge" style="background:#E8F5E9;color:#388E3C;">تم التوصيل</span></div>
+        <div class="admin-table-row"><div class="admin-row-icon">🛒</div><div class="admin-row-info"><div class="admin-row-name">#2844 — نورا خالد</div><div class="admin-row-sub">مخبز الفجر · 45 جنيه</div></div><span class="status-badge s-new">جديد</span></div>
+      </div>
+      <!-- MERCHANTS TAB -->
+      <div class="admin-section" id="tab-merchants">
+        <button class="admin-action-btn" onclick="showToast('إضافة تاجر جديد 🏪')">+ إضافة تاجر جديد</button>
+        <div style="margin-top:10px;">
+          <div class="admin-table-row"><div class="admin-row-icon">🍖</div><div class="admin-row-info"><div class="admin-row-name">مطعم الشيف محمد</div><div class="admin-row-sub">عمولة 10% · 12 طلب اليوم</div></div><span class="status-badge s-active">مفتوح</span></div>
+          <div class="admin-table-row"><div class="admin-row-icon">🛒</div><div class="admin-row-info"><div class="admin-row-name">سوبرماركت العائلة</div><div class="admin-row-sub">عمولة 8% · 8 طلب اليوم</div></div><span class="status-badge s-active">مفتوح</span></div>
+          <div class="admin-table-row"><div class="admin-row-icon">💊</div><div class="admin-row-info"><div class="admin-row-name">صيدلية النور</div><div class="admin-row-sub">عمولة 5% · 5 طلب اليوم</div></div><span class="status-badge s-active">مفتوح</span></div>
+          <div class="admin-table-row"><div class="admin-row-icon">🥖</div><div class="admin-row-info"><div class="admin-row-name">مخبز الفجر</div><div class="admin-row-sub">عمولة 8% · 3 طلب اليوم</div></div><span class="status-badge" style="background:#FFEBEE;color:#D32F2F;">مغلق</span></div>
+        </div>
+      </div>
+      <!-- DRIVERS TAB -->
+      <div class="admin-section" id="tab-drivers">
+        <button class="admin-action-btn" onclick="showToast('إضافة مندوب جديد 🛵')">+ إضافة مندوب جديد</button>
+        <div style="margin-top:10px;">
+          <div class="admin-table-row"><div class="admin-row-icon">🛵</div><div class="admin-row-info"><div class="admin-row-name">أحمد محمد</div><div class="admin-row-sub">⭐ 4.9 · 8 توصيلات اليوم · 340 جنيه</div></div><span class="status-badge s-busy">مشغول</span></div>
+          <div class="admin-table-row"><div class="admin-row-icon">🛵</div><div class="admin-row-info"><div class="admin-row-name">محمود علي</div><div class="admin-row-sub">⭐ 4.7 · 6 توصيلات اليوم · 250 جنيه</div></div><span class="status-badge s-active">متاح</span></div>
+          <div class="admin-table-row"><div class="admin-row-icon">🛵</div><div class="admin-row-info"><div class="admin-row-name">كريم حسن</div><div class="admin-row-sub">⭐ 4.8 · 5 توصيلات اليوم · 200 جنيه</div></div><span class="status-badge s-active">متاح</span></div>
+        </div>
+      </div>
+      <!-- CUSTOMERS TAB -->
+      <div class="admin-section" id="tab-customers">
+        <div class="admin-table-row"><div class="admin-row-icon">👤</div><div class="admin-row-info"><div class="admin-row-name">محمد أحمد</div><div class="admin-row-sub">01001234567 · 15 طلب</div></div><span class="status-badge s-active">نشط</span></div>
+        <div class="admin-table-row"><div class="admin-row-icon">👤</div><div class="admin-row-info"><div class="admin-row-name">فاطمة علي</div><div class="admin-row-sub">01009876543 · 8 طلب</div></div><span class="status-badge s-active">نشط</span></div>
+        <div class="admin-table-row"><div class="admin-row-icon">👤</div><div class="admin-row-info"><div class="admin-row-name">سامي حسن</div><div class="admin-row-sub">01112345678 · 22 طلب</div></div><span class="status-badge s-active">نشط</span></div>
+        <div class="admin-table-row"><div class="admin-row-icon">👤</div><div class="admin-row-info"><div class="admin-row-name">نورا خالد</div><div class="admin-row-sub">01198765432 · 3 طلب</div></div><span class="status-badge s-new">جديد</span></div>
+      </div>
+      <!-- COMMISSIONS TAB -->
+      <div class="admin-section" id="tab-commissions">
+        <div style="background:#FFF3E0;border-radius:14px;padding:12px;margin-bottom:12px;font-size:13px;color:#F57C00;font-weight:600;">💡 اضغط على النسبة لتعديلها</div>
+        <div class="commission-item"><div><div class="comm-name">🍖 مطاعم</div><div style="font-size:11px;color:var(--text-light);">نسبة المنصة من كل طلب</div></div><div class="comm-val" onclick="showToast('تعديل العمولة: مطاعم')">10%</div></div>
+        <div class="commission-item"><div><div class="comm-name">🛒 سوبرماركت</div><div style="font-size:11px;color:var(--text-light);">نسبة المنصة من كل طلب</div></div><div class="comm-val" onclick="showToast('تعديل العمولة: سوبرماركت')">8%</div></div>
+        <div class="commission-item"><div><div class="comm-name">💊 صيدليات</div><div style="font-size:11px;color:var(--text-light);">نسبة المنصة من كل طلب</div></div><div class="comm-val" onclick="showToast('تعديل العمولة: صيدليات')">5%</div></div>
+        <div class="commission-item"><div><div class="comm-name">🥖 مخابز</div><div style="font-size:11px;color:var(--text-light);">نسبة المنصة من كل طلب</div></div><div class="comm-val" onclick="showToast('تعديل العمولة: مخابز')">8%</div></div>
+        <div class="commission-item"><div><div class="comm-name">🛵 مشاوير</div><div style="font-size:11px;color:var(--text-light);">نسبة من سعر الرحلة</div></div><div class="comm-val" onclick="showToast('تعديل العمولة: مشاوير')">15%</div></div>
+      </div>
+      <!-- NOTIFICATIONS TAB -->
+      <div class="admin-section" id="tab-notifications">
+        <div class="notif-form">
+          <div style="font-size:14px;font-weight:700;margin-bottom:10px;">📢 إرسال إشعار جماعي</div>
+          <div style="font-size:12px;color:var(--text-light);margin-bottom:6px;">اختار المستلمين</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <button onclick="this.style.background='#FF5722';this.style.color='#fff'" style="padding:6px 12px;border-radius:10px;border:1px solid var(--primary);background:#fff;color:var(--primary);font-size:12px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;">الكل</button>
+            <button onclick="this.style.background='#FF5722';this.style.color='#fff'" style="padding:6px 12px;border-radius:10px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;">العملاء</button>
+            <button onclick="this.style.background='#FF5722';this.style.color='#fff'" style="padding:6px 12px;border-radius:10px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;">التجار</button>
+            <button onclick="this.style.background='#FF5722';this.style.color='#fff'" style="padding:6px 12px;border-radius:10px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;">المندوبين</button>
+          </div>
+          <div style="font-size:12px;color:var(--text-light);margin-bottom:6px;">نص الإشعار</div>
+          <textarea class="notif-textarea" placeholder="اكتب نص الإشعار هنا..."></textarea>
+          <button class="primary-btn" style="margin-top:10px;" onclick="showToast('✅ تم إرسال الإشعار بنجاح!')">📤 إرسال الإشعار</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav" id="bottomNav" style="display:none;">
+    <div class="nav-item active" id="nav-home" onclick="navTo('homeScreen','nav-home')"><span class="nav-icon">🏠</span><span class="nav-label">الرئيسية</span></div>
+    <div class="nav-item" id="nav-search" onclick="navTo('searchScreen','nav-search');setTimeout(()=>document.getElementById('searchInput').focus(),100)"><span class="nav-icon">🔍</span><span class="nav-label">بحث</span></div>
+    <div class="nav-item" id="nav-orders" onclick="navTo('ordersScreen','nav-orders')"><span class="nav-icon">📦</span><span class="nav-label">طلباتي</span></div>
+    <div class="nav-item" id="nav-profile" onclick="navTo('profileScreen','nav-profile')"><span class="nav-icon">👤</span><span class="nav-label">حسابي</span></div>
+  </div>
+</div>
+
+<script>
+// ===== DATA =====
+const stores = [
+  {id:1, name:'مطعم الشيف محمد', cat:'مطاعم', emoji:'🍖', bg:'#FFF3E0', rating:'4.8', time:'25', delivery:'5', open:true,
+   products:[{name:'فراخ مشوية',desc:'نص فرخة مشوية مع بطاطس',price:65,emoji:'🍗'},{name:'كفتة مشوية',desc:'250 جرام كفتة مع خبز',price:75,emoji:'🥩'},{name:'بيتزا مشكل',desc:'بيتزا كبيرة بجميع الإضافات',price:120,emoji:'🍕'},{name:'سلطة خضراء',desc:'سلطة طازجة مع ليمون',price:25,emoji:'🥗'}]},
+  {id:2, name:'سوبرماركت العائلة', cat:'سوبرماركت', emoji:'🛒', bg:'#E8F5E9', rating:'4.6', time:'20', delivery:'مجاني', open:true,
+   products:[{name:'أرز بسمتي 1 كيلو',desc:'أرز طويل الحبة فاخر',price:32,emoji:'🍚'},{name:'زيت دوار الشمس',desc:'زيت نباتي 1.5 لتر',price:45,emoji:'🫙'},{name:'سكر 1 كيلو',desc:'سكر أبيض ناعم',price:28,emoji:'🧂'},{name:'مكرونة 500 جرام',desc:'مكرونة إيطالية',price:18,emoji:'🍝'}]},
+  {id:3, name:'صيدلية النور', cat:'صيدليات', emoji:'💊', bg:'#E3F2FD', rating:'4.9', time:'15', delivery:'5', open:true,
+   products:[{name:'بروفين 400',desc:'مسكن ألم ومضاد التهاب',price:25,emoji:'💊'},{name:'باراسيتامول',desc:'خافض حرارة ومسكن',price:15,emoji:'💊'},{name:'فيتامين سي',desc:'1000 مجم - 20 قرص',price:45,emoji:'🍊'},{name:'كريم مرطب',desc:'مرطب للبشرة الجافة',price:85,emoji:'🧴'}]},
+  {id:4, name:'مخبز الفجر', cat:'مخابز', emoji:'🥖', bg:'#FCE4EC', rating:'4.7', time:'10', delivery:'3', open:true,
+   products:[{name:'عيش بلدي',desc:'رغيف طازج من الفرن',price:1,emoji:'🍞'},{name:'كروسان بالجبن',desc:'كروسان طازج بالجبنة',price:12,emoji:'🥐'},{name:'كيكة إسفنجية',desc:'كيكة بالفانيليا',price:35,emoji:'🎂'},{name:'بسكويت بالشوكولاتة',desc:'علبة بسكويت كريمة',price:28,emoji:'🍪'}]},
+  {id:5, name:'خضار أبو العز', cat:'خضار', emoji:'🥦', bg:'#F3E5F5', rating:'4.5', time:'20', delivery:'5', open:true,
+   products:[{name:'طماطم 1 كيلو',desc:'طماطم طازجة محلية',price:12,emoji:'🍅'},{name:'خيار 1 كيلو',desc:'خيار طازج',price:10,emoji:'🥒'},{name:'بطاطس 1 كيلو',desc:'بطاطس مصرية',price:15,emoji:'🥔'},{name:'بصل 1 كيلو',desc:'بصل أبيض طازج',price:8,emoji:'🧅'}]},
+  {id:6, name:'كافيه الوقت الحلو', cat:'كافيهات', emoji:'☕', bg:'#E0F2F1', rating:'4.8', time:'15', delivery:'5', open:true,
+   products:[{name:'قهوة عربية',desc:'قهوة بالهيل',price:25,emoji:'☕'},{name:'كابتشينو',desc:'إسبريسو مع حليب مبخر',price:45,emoji:'☕'},{name:'عصير مانجو',desc:'عصير طبيعي طازج',price:30,emoji:'🥭'},{name:'كيكة تشيز كيك',desc:'شريحة تشيز كيك',price:55,emoji:'🍰'}]}
+];
+
+let cart = [];
+let currentUser = {};
+let userType = 'customer';
+let selectedType = 'customer';
+let selectedRide = 'moto';
+let orderHistory = [];
+let mapInstance = null;
+let trackMapInstance = null;
+let userLat = 30.5965;
+let userLng = 32.2715;
+
+const rideData = {
+  moto:{icon:'🛵',driver:'محمود السائق',plate:'م ن 5521',eta:'3 د',base:10},
+  car:{icon:'🚗',driver:'كريم خالد',plate:'أ ب 9834',eta:'6 د',base:25},
+  tuk:{icon:'🛺',driver:'سامي محمد',plate:'ت ت 0012',eta:'2 د',base:7},
+  van:{icon:'🚐',driver:'حسام علي',plate:'م ب 3311',eta:'8 د',base:40}
+};
+
+// ===== NAVIGATION =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.display = 'none'; });
+  const el = document.getElementById(id);
+  if (el) { el.style.display = 'flex'; el.classList.add('active'); }
+  // Init maps when needed
+  if (id === 'addressScreen') initMap();
+  if (id === 'trackingScreen') initTrackMap();
+}
+
+function navTo(screenId, navId) {
+  showScreen(screenId);
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(navId).classList.add('active');
+}
+
+function goHome() {
+  navTo('homeScreen','nav-home');
+}
+
+// ===== REGISTER =====
+function selType(t) {
+  selectedType = t;
+  document.querySelectorAll('.type-card').forEach(c => c.classList.remove('sel'));
+  document.getElementById('tc-'+t).classList.add('sel');
+}
+
+function sendOTP() {
+  const name = document.getElementById('regName').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  if (!name) { showToast('اكتب اسمك الأول'); return; }
+  if (phone.length < 10) { showToast('اكتب رقم موبايل صح'); return; }
+  currentUser = {name, phone, type: selectedType};
+  document.getElementById('otpSub').textContent = 'تم إرسال كود على رقم ' + phone;
+  showScreen('otpScreen');
+  setTimeout(() => document.getElementById('otp1').focus(), 300);
+}
+
+function otpNext(cur, nextId) {
+  if (cur.value.length === 1 && nextId) document.getElementById(nextId).focus();
+}
+
+function verifyOTP() {
+  const code = ['otp1','otp2','otp3','otp4'].map(id => document.getElementById(id).value).join('');
+  if (code !== '1234') { showToast('الكود غلط — جرب 1234 ❌'); return; }
+  userType = currentUser.type;
+  document.getElementById('userName').textContent = currentUser.name.split(' ')[0];
+  document.getElementById('profileName').textContent = currentUser.name;
+  document.getElementById('profilePhone').textContent = currentUser.phone;
+  showToast('أهلاً ' + currentUser.name + '! 🎉');
+  setTimeout(() => {
+    if (userType === 'customer') {
+      document.getElementById('bottomNav').style.display = 'flex';
+      renderStores(stores);
+      renderOrderHistory();
+      goHome();
+    } else if (userType === 'driver') {
+      document.getElementById('driverName').textContent = currentUser.name + ' 🛵';
+      showScreen('driverScreen');
+    } else if (userType === 'merchant') {
+      document.getElementById('merchantName').textContent = 'متجر ' + currentUser.name + ' 🏪';
+      showScreen('merchantScreen');
+    } else if (userType === 'admin') {
+      showScreen('adminScreen');
+    }
+  }, 800);
+}
+
+function logout() {
+  document.getElementById('bottomNav').style.display = 'none';
+  cart = [];
+  updateCartUI();
+  currentUser = {};
+  showScreen('registerScreen');
+  document.getElementById('regName').value = '';
+  document.getElementById('regPhone').value = '';
+  ['otp1','otp2','otp3','otp4'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ===== STORES =====
+function renderStores(list) {
+  const container = document.getElementById('storesList');
+  container.innerHTML = list.map(s => `
+    <div class="store-card" onclick="openStore(${s.id})">
+      <div class="store-banner" style="background:linear-gradient(135deg,${s.bg},${s.bg}dd);">
+        ${s.emoji}
+        ${s.open ? '<div class="store-badge">مفتوح</div>' : '<div class="store-badge" style="background:#757575;">مغلق</div>'}
+      </div>
+      <div class="store-info">
+        <div class="store-name">${s.name}</div>
+        <div class="store-meta">
+          <span class="rating">⭐ ${s.rating}</span>
+          <span>🕐 ${s.time} دقيقة</span>
+          <span>🛵 ${s.delivery} جنيه</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterStores(cat) {
+  const filtered = stores.filter(s => s.cat === cat);
+  renderStores(filtered.length ? filtered : stores);
+  showToast('تصنيف: ' + cat);
+}
+
+function openStore(id) {
+  const store = stores.find(s => s.id === id);
+  if (!store) return;
+  document.getElementById('storeDetailName').textContent = store.name;
+  document.getElementById('storeDetailMeta').textContent = `⭐ ${store.rating} · 🕐 ${store.time} دقيقة · 🛵 التوصيل ${store.delivery} جنيه`;
+  document.getElementById('storeHero').style.background = `linear-gradient(135deg,${store.bg},${store.bg}dd)`;
+  document.getElementById('storeHero').innerHTML = `<div style="font-size:64px;">${store.emoji}</div><div class="back-btn" onclick="showScreen('homeScreen')">→</div>`;
+  document.getElementById('productsList').innerHTML = store.products.map(p => `
+    <div class="product-card">
+      <div class="product-emoji">${p.emoji}</div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:700;">${p.name}</div>
+        <div style="font-size:11px;color:var(--text-light);margin-top:2px;">${p.desc}</div>
+        <div class="product-price">${p.price} جنيه</div>
+      </div>
+      <button class="add-btn" onclick="addToCart('${p.name}',${p.price})">+</button>
+    </div>
+  `).join('');
+  showScreen('storeScreen');
+}
+
+// ===== CART =====
+function addToCart(name, price) {
+  const ex = cart.find(i => i.name === name);
+  if (ex) ex.qty++;
+  else cart.push({name, price, qty:1});
+  updateCartUI();
+  showToast('✅ تمت الإضافة');
+}
+
+function updateCartUI() {
+  const total = cart.reduce((s,i) => s + i.price * i.qty, 0);
+  const count = cart.reduce((s,i) => s + i.qty, 0);
+  document.getElementById('cartFloatCount').textContent = `🛒 ${count} منتجات`;
+  document.getElementById('cartFloatTotal').textContent = `${total} جنيه ←`;
+  document.getElementById('cartFloat').classList.toggle('show', count > 0 && document.getElementById('storeScreen').classList.contains('active'));
+  document.getElementById('cartItemsList').innerHTML = cart.map(item => `
+    <div class="cart-item">
+      <span style="font-size:28px;">🍽️</span>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:700;">${item.name}</div><div style="font-size:12px;color:var(--primary);font-weight:600;">${item.price} جنيه</div></div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty('${item.name}',-1)">-</button>
+        <span style="font-size:14px;font-weight:700;min-width:18px;text-align:center;">${item.qty}</span>
+        <button class="qty-btn" onclick="changeQty('${item.name}',1)">+</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('cartSubtotal').textContent = total + ' جنيه';
+  document.getElementById('cartTotal').textContent = (total + 5) + ' جنيه';
+}
+
+function changeQty(name, delta) {
+  const item = cart.find(i => i.name === name);
+  if (item) { item.qty += delta; if (item.qty <= 0) cart = cart.filter(i => i.name !== name); }
+  updateCartUI();
+}
+
+// ===== MAP =====
+function initMap() {
+  if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+  setTimeout(() => {
+    mapInstance = L.map('map', {zoomControl:false, attributionControl:false}).setView([userLat, userLng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+    L.marker([userLat, userLng]).addTo(mapInstance).bindPopup('موقعك').openPopup();
+  }, 100);
+}
+
+function initTrackMap() {
+  if (trackMapInstance) { trackMapInstance.remove(); trackMapInstance = null; }
+  setTimeout(() => {
+    trackMapInstance = L.map('trackMap', {zoomControl:false, attributionControl:false}).setView([userLat, userLng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(trackMapInstance);
+    const driverLat = userLat + 0.005;
+    const driverLng = userLng + 0.003;
+    L.marker([userLat, userLng]).addTo(trackMapInstance).bindPopup('موقعك');
+    L.marker([driverLat, driverLng], {icon: L.divIcon({html:'🛵', className:'', iconSize:[30,30]})}).addTo(trackMapInstance).bindPopup('المندوب');
+    L.polyline([[userLat,userLng],[driverLat,driverLng]], {color:'#FF5722', dashArray:'8'}).addTo(trackMapInstance);
+  }, 100);
+}
+
+function getMyLocation() {
+  if (!navigator.geolocation) { showToast('المتصفح لا يدعم GPS'); return; }
+  showToast('جاري تحديد موقعك... 📡');
+  navigator.geolocation.getCurrentPosition(pos => {
+    userLat = pos.coords.latitude;
+    userLng = pos.coords.longitude;
+    document.getElementById('detectedAddress').textContent = `📍 تم تحديد موقعك: ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`;
+    document.getElementById('userLocText').textContent = 'موقعي الحالي';
+    if (mapInstance) mapInstance.setView([userLat, userLng], 15);
+    showToast('✅ تم تحديد موقعك!');
+  }, () => {
+    showToast('تعذر تحديد الموقع — تأكد من إذن GPS');
+  });
+}
+
+function openGPS() {
+  showToast('جاري تحديد موقعك... 📡');
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      document.getElementById('userLocText').textContent = 'موقعي الحالي ✅';
+      showToast('✅ تم تحديد موقعك!');
+    }, () => showToast('فعّل GPS من الإعدادات'));
+  }
+}
+
+function getRideLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('rideFrom').value = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+      showToast('✅ تم تحديد موقعك!');
+      calcRide();
+    }, () => showToast('فعّل GPS من الإعدادات'));
+  }
+}
+
+// ===== ORDER =====
+function placeOrder() {
+  const orderId = '#MAN-' + Math.floor(Math.random() * 9000 + 1000);
+  const now = new Date();
+  document.getElementById('trackOrderId').textContent = 'طلب رقم ' + orderId;
+  document.getElementById('orderTime').textContent = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
+  orderHistory.unshift({id: orderId, store: document.getElementById('storeDetailName').textContent || 'متجر', items: cart.map(i=>i.name+' ×'+i.qty).join('، '), total: cart.reduce((s,i)=>s+i.price*i.qty,0)+5, status:'pending', date: now.toLocaleDateString('ar')});
+  cart = [];
+  updateCartUI();
+  renderOrderHistory();
+  showScreen('trackingScreen');
+  navTo('trackingScreen','nav-orders');
+}
+
+function renderOrderHistory() {
+  const statusMap = {pending:'🟡 قيد التوصيل', delivered:'✅ تم التوصيل', cancelled:'❌ ملغي'};
+  const clsMap = {pending:'s-pending', delivered:'s-delivered', cancelled:'s-cancelled'};
+  // Add some demo orders
+  const demo = [
+    {id:'#MAN-2840', store:'مطعم الشيف محمد', items:'فراخ مشوية × 2', total:135, status:'delivered', date:'25/6/2026'},
+    {id:'#MAN-2830', store:'سوبرماركت العائلة', items:'أرز × 1 — زيت × 1', total:82, status:'delivered', date:'23/6/2026'},
+    {id:'#MAN-2810', store:'صيدلية النور', items:'بروفين 400 × 2', total:55, status:'cancelled', date:'20/6/2026'}
+  ];
+  const all = [...orderHistory, ...demo];
+  document.getElementById('orderHistoryList').innerHTML = all.map(o => `
+    <div class="order-history-item">
+      <div class="order-h-top"><span class="order-h-id">${o.id}</span><span class="order-h-date">${o.date}</span></div>
+      <div class="order-h-store">${o.store}</div>
+      <div class="order-h-items">${o.items}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+        <div class="order-h-total">${o.total} جنيه</div>
+        <span class="order-h-status ${clsMap[o.status]}">${statusMap[o.status]}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== SEARCH =====
+function doSearch(q) {
+  const r = document.getElementById('searchResults');
+  if (!q.trim()) {
+    r.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div style="font-size:48px;margin-bottom:12px;">🔍</div><div>ابحث عن أي متجر أو منتج</div></div>';
+    return;
+  }
+  const results = [];
+  stores.forEach(s => {
+    if (s.name.includes(q) || s.cat.includes(q)) results.push({type:'store', name:s.name, sub:s.cat+' · ⭐'+s.rating, emoji:s.emoji, id:s.id});
+    s.products.forEach(p => {
+      if (p.name.includes(q)) results.push({type:'product', name:p.name, sub:s.name+' · '+p.price+' جنيه', emoji:p.emoji, storeId:s.id});
+    });
+  });
+  if (!results.length) {
+    r.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div style="font-size:48px;">😔</div><div style="margin-top:8px;">مش لاقي نتائج</div></div>';
+    return;
+  }
+  r.innerHTML = results.map(res => `
+    <div class="search-result-item" onclick="${res.type==='store' ? 'openStore('+res.id+')' : 'openStore('+res.storeId+')'}">
+      <div class="result-icon">${res.emoji}</div>
+      <div class="result-info"><div class="result-name">${res.name}</div><div class="result-sub">${res.sub}</div></div>
+      <span style="font-size:13px;color:var(--primary);">${res.type==='store'?'متجر':'منتج'}</span>
+    </div>
+  `).join('');
+}
+
+// ===== RIDES =====
+function selRide(type) {
+  selectedRide = type;
+  document.querySelectorAll('.ride-card').forEach(c => c.classList.remove('sel'));
+  document.getElementById('rc-'+type).classList.add('sel');
+  calcRide();
+}
+
+function calcRide() {
+  const from = document.getElementById('rideFrom').value;
+  const to = document.getElementById('rideTo').value;
+  const est = document.getElementById('rideEst');
+  if (from.length > 2 && to.length > 2) {
+    const dist = (Math.random()*4+1.5).toFixed(1);
+    const price = rideData[selectedRide].base + Math.round(dist*3);
+    const mins = Math.round(dist*2.5);
+    document.getElementById('estDist').textContent = dist+' كم';
+    document.getElementById('estTime').textContent = mins+' دقيقة';
+    document.getElementById('estPrice').textContent = price+' جنيه';
+    est.classList.add('show');
+  } else { est.classList.remove('show'); }
+}
+
+function bookRide() {
+  const from = document.getElementById('rideFrom').value || 'موقعك الحالي';
+  const to = document.getElementById('rideTo').value;
+  if (!to) { showToast('اكتب وجهتك أولاً'); return; }
+  const r = rideData[selectedRide];
+  const price = document.getElementById('estPrice').textContent || (r.base+' جنيه');
+  document.getElementById('rideIcon').textContent = r.icon;
+  document.getElementById('rideEtaVal').textContent = r.eta;
+  document.getElementById('rideDriverName').textContent = r.driver;
+  document.getElementById('ridePlate').textContent = r.plate;
+  document.getElementById('rideFromText').textContent = from;
+  document.getElementById('rideToText').textContent = to;
+  document.getElementById('ridePriceVal').textContent = price;
+  showScreen('rideTrackScreen');
+}
+
+// ===== ADMIN =====
+function switchAdminTab(tab) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ===== PWA =====
+const manifest = {name:'المنايف - توصيل سريع',short_name:'المنايف',display:'standalone',background_color:'#FF5722',theme_color:'#FF5722',start_url:'./',icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%23FF5722' rx='40'/><text y='150' font-size='130' x='25'>🛵</text></svg>",sizes:'192x192',type:'image/svg+xml'}]};
+const blob = new Blob([JSON.stringify(manifest)],{type:'application/json'});
+document.getElementById('manifestLink').href = URL.createObjectURL(blob);
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBar').classList.add('show'); });
+document.getElementById('installBtn').addEventListener('click', async () => {
+  document.getElementById('installBar').classList.remove('show');
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+});
+
+if ('serviceWorker' in navigator) {
+  const sw = `const C='manayef-v2';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['./']).catch(()=>{}))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)).catch(()=>new Response(''))));`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+}
+</script>
+</body>
+</html>
