@@ -1235,13 +1235,12 @@ if('serviceWorker' in navigator){const sw=`const C='mg-v1';self.addEventListener
 
 // ===== AUTH STATE LISTENER =====
 
-// Timeout fallback - إذا Firebase ما استجابش خلال 15 ثانية
+// Timeout fallback - إذا Firebase ما استجابش خلال 10 ثواني
 let authTimeout = setTimeout(() => {
     console.warn('Firebase Auth timeout - showing entry screen');
     hideLoading();
     showScreen('screen-entry');
-    showToast('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', 'err');
-}, 15000);
+}, 10000);
 
 getRedirectResult(auth).catch(e => {
   console.log('Redirect result error:', e);
