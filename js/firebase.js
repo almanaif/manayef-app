@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebas
 import { getFirestore, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
+
 // ===== CONFIG =====
 const FC = {
   apiKey: "AIzaSyAwwthF9s8YhroiDzOK79_rZtepVgml6f4",
@@ -14,17 +15,21 @@ const FC = {
   measurementId: "G-D8PD7CGK5R"
 };
 
+
 const app = initializeApp(FC);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const gProvider = new GoogleAuthProvider();
 
+
 // ===== EXPORTS =====
 export { db, auth, gProvider, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, limit, deleteDoc, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail };
+
 
 // ===== CLOUDINARY CONFIG =====
 export const CLOUDINARY_CLOUD = 'yfohr6xd';
 export const CLOUDINARY_PRESET = 'manayef_docs2';
+
 
 // ===== GLOBALS =====
 window.CU = null; // current user
@@ -47,6 +52,11 @@ window._currentTrackOrd = null;
 window._gpsInterval = null;
 window._gpsWatch = null;
 
+
 // Store location (El-Manayef area)
 export const STORE_LOC = [30.5965, 32.2715];
 export const DEFAULT_LOC = [30.5965, 32.2715];
+
+
+window.auth = auth;
+window.db = db;
