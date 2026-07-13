@@ -446,8 +446,7 @@ async function submitRating() {
 function hideLoading() {
   const ld = document.getElementById('loading');
   if (ld) {
-    ld.classList.add('hide');
-    setTimeout(() => { if (ld) ld.style.display = 'none'; }, 500);
+    ld.style.display = 'none';
   }
 }
 
