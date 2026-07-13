@@ -9,8 +9,18 @@
   <meta name="theme-color" content="#FF6B00">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <script>
+    // Safety timer to hide loading screen no matter what
+    setTimeout(function() {
+      var ld = document.getElementById('loading');
+      if (ld) ld.style.display = 'none';
+    }, 4000);
+  </script>
 </head>
 <body>
+
+
 
 
 <!-- ===== LOADING ===== -->
@@ -22,8 +32,12 @@
 </div>
 
 
+
+
 <!-- ===== TOAST ===== -->
 <div id="toast" class="toast"></div>
+
+
 
 
 <!-- ===== ENTRY SCREEN ===== -->
@@ -54,6 +68,8 @@
 </div>
 
 
+
+
 <!-- ===== AUTH SCREEN ===== -->
 <div id="screen-auth" class="screen">
   <div class="auth-logo">
@@ -67,8 +83,3 @@
       <button class="auth-tab" onclick="switchTab('register')">حساب جديد</button>
     </div>
     <div id="err-msg" class="err-msg"></div>
-
-
-    <!-- LOGIN -->
-    <div id="auth-login">
-      <button class="google-btn" onclick="loginGoogle()">
