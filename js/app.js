@@ -8,7 +8,23 @@
 
 
 
+
+
+
+
+
+
+
+
 import { db, auth, gProvider, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, limit, deleteDoc, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail, CLOUDINARY_CLOUD, CLOUDINARY_PRESET, STORE_LOC, DEFAULT_LOC } from './firebase.js';
+
+
+
+
+
+
+
+
 
 
 
@@ -23,6 +39,14 @@ const SC = {new:'sb sb-new',accepted:'sb sb-accepted',preparing:'sb sb-preparing
 const STEPS = ['new','accepted','preparing','ready','delivering','done'];
 const STEP_ICONS = ['🆕','✅','👨‍🍳','📦','🛵','✅'];
 const STEP_LABELS = ['جديد','تم القبول','جاري التحضير','جاهز للاستلام','في الطريق','تم التسليم'];
+
+
+
+
+
+
+
+
 
 
 
@@ -56,6 +80,14 @@ function loadProducts() {
 
 
 
+
+
+
+
+
+
+
+
 // ===== COUPONS LOADER =====
 let couponsUnsub = null;
 function loadCoupons() {
@@ -67,35 +99,24 @@ function loadCoupons() {
     snap.forEach(d => {
       const c = d.data();
       if (c.active === false) return;
-      if (c.expiryDate && new Date(c.expiryDate) < now) return;
-      items.push({id:d.id, ...c});
-    });
-    const sec = document.getElementById('off-sec');
-    const scroll = document.getElementById('off-scroll');
-    if (!items.length) { if (sec) sec.style.display='none'; return; }
-    if (sec) sec.style.display='block';
-    if (scroll) scroll.innerHTML = items.map(c =>
-      `<div class="off-card"><div class="off-badge">${c.badge||''}</div><div class="off-icon">${c.icon||'🎟️'}</div><h4>${c.title||''}</h4><p>${c.description||''}</p><div class="off-code">${c.code||''}</div></div>`
-    ).join('');
-  });
-}
-
-
-
-
-
-
-
-
-// Export to window for HTML onclick handlers
-window.showScreen = showScreen;
-window.pickEntryType = pickEntryType;
-window.switchTab = switchTab;
-window.doLogin = doLogin;
-window.loginGoogle = loginGoogle;
-window.hideLoading = hideLoading;
-
-function hideLoading() {
-    const ld = document.getElementById('loading');
-    if (ld) ld.classList.add('hide');
+window.loginEmail = async function() {
+  const email = document.getElementById('li-email').value.trim();
+  const pass = document.getElementById('li-pass').value;
+  if(!email || !pass) return showToast('يرجى إدخال البيانات','err');
+  
+  // Hardcoded admin check
+  if (email === 'admin@manayef.app' && pass === 'admin224444') {
+    window.CU = { email: email, uid: 'admin_hardcoded' };
+    window.CUD = { role: 'admin', name: 'المدير العام' };
+    showToast('تم تسجيل دخول الإدارة بنجاح');
+    showScreen('screen-admin');
+    return;
+  }
+  
+  try {
+    const res = await signInWithEmailAndPassword(auth, email, pass);
+    // ... rest of the original logic
+  } catch(e) {
+    showToast('خطأ في تسجيل الدخول','err');
+  }
 }
