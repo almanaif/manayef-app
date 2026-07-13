@@ -2,7 +2,11 @@
 // Imported from firebase.js module
 
 
+
+
 import { db, auth, gProvider, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, limit, deleteDoc, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail, CLOUDINARY_CLOUD, CLOUDINARY_PRESET, STORE_LOC, DEFAULT_LOC } from './firebase.js';
+
+
 
 
 // ===== ORDER STATUS CONSTANTS =====
@@ -11,6 +15,8 @@ const SC = {new:'sb sb-new',accepted:'sb sb-accepted',preparing:'sb sb-preparing
 const STEPS = ['new','accepted','preparing','ready','delivering','done'];
 const STEP_ICONS = ['🆕','✅','👨‍🍳','📦','🛵','✅'];
 const STEP_LABELS = ['جديد','تم القبول','جاري التحضير','جاهز للاستلام','في الطريق','تم التسليم'];
+
+
 
 
 // ===== PRODUCTS LOADER (from Firestore) =====
@@ -30,6 +36,8 @@ function loadProducts() {
     if (document.getElementById('screen-store')?.classList.contains('active')) renderProds(activeCat);
   }, err => { showToast('تعذر تحميل المنتجات','err'); });
 }
+
+
 
 
 // ===== COUPONS LOADER =====
@@ -57,6 +65,8 @@ function loadCoupons() {
 }
 
 
+
+
 // ===== BANNERS LOADER =====
 let bannersUnsub = null;
 function loadBanners() {
@@ -67,8 +77,3 @@ function loadBanners() {
     const items = [];
     snap.forEach(d => {
       const b = d.data();
-      if (b.active === false) return;
-      if (b.startDate && new Date(b.startDate) > now) return;
-      if (b.endDate && new Date(b.endDate) < now) return;
-      items.push({id:d.id, ...b});
-    });
