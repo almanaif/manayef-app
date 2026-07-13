@@ -445,8 +445,10 @@ async function submitRating() {
 // ===== AUTH FUNCTIONS =====
 function hideLoading() {
   const ld = document.getElementById('loading');
-  ld.classList.add('hide');
-  setTimeout(() => ld.style.display = 'none', 500);
+  if (ld) {
+    ld.classList.add('hide');
+    setTimeout(() => { if (ld) ld.style.display = 'none'; }, 500);
+  }
 }
 
 function switchTab(t) {
@@ -642,17 +644,25 @@ function startGPS() {
 
 // ===== HUBSPOT SYNC =====
 function syncToHubSpot(data) {
-  fetch('https://manayef-hubspot-bridge.mohamedselim3121998.workers.dev', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: data.name || '',
-      email: data.email || '',
-      phone: data.phone || '',
-      village: data.address || data.village || '',
-      role: data.role || ''
-    })
-  }).catch(() => {});
+  // HubSpot sync - non-blocking, with timeout
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    fetch('https://manayef-hubspot-bridge.mohamedselim3121998.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        village: data.address || data.village || '',
+        role: data.role || ''
+      }),
+      signal: controller.signal
+    }).then(() => clearTimeout(timeoutId)).catch(() => clearTimeout(timeoutId));
+  } catch(e) {
+    console.log('HubSpot sync skipped:', e.message);
+  }
 }
 
 // ===== DRIVER FUNCTIONS =====
@@ -1196,8 +1206,14 @@ async function sendAnyReq(){
 }
 
 // ===== HELPERS =====
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
-function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(type?' '+type:'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+function showScreen(id){
+  const target = document.getElementById(id);
+  if (!target) { console.warn('Screen not found:', id); return; }
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  target.classList.add('active');
+  window.scrollTo(0,0);
+}
+function showToast(msg,type=''){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast'+(type?' '+type:'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 function showErr(msg){const e=document.getElementById('err-msg');e.textContent=msg;e.style.display='block';e.scrollIntoView({behavior:'smooth',block:'center'});}
 function setLoad(btnId,spId,on){const btn=document.getElementById(btnId);const sp=spId?document.getElementById(spId):null;if(btn)btn.disabled=on;if(sp)sp.style.display=on?'block':'none';}
 function callStore(num){window.location.href='tel:'+num;}
@@ -1219,6 +1235,15 @@ if(manifestLink) manifestLink.setAttribute('href',URL.createObjectURL(mb));
 if('serviceWorker' in navigator){const sw=`const C='mg-v1';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['/']))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;const sb=new Blob([sw],{type:'application/javascript'});navigator.serviceWorker.register(URL.createObjectURL(sb)).catch(()=>{});}
 
 // ===== AUTH STATE LISTENER =====
+
+// Timeout fallback - إذا Firebase ما استجابش خلال 15 ثانية
+let authTimeout = setTimeout(() => {
+    console.warn('Firebase Auth timeout - showing entry screen');
+    hideLoading();
+    showScreen('screen-entry');
+    showToast('تعذر الاتصال بالخادم، يرجى المحاولة لاحقاً', 'err');
+}, 15000);
+
 getRedirectResult(auth).catch(e => {
   console.log('Redirect result error:', e);
   if (e?.code && e.code !== 'auth/no-auth-event') {
@@ -1243,6 +1268,9 @@ if (isSignInWithEmailLink(auth, window.location.href)) {
 }
 
 onAuthStateChanged(auth, async user => {
+    // إلغاء الـ timeout عند الاستجابة
+    clearTimeout(authTimeout);
+  
   if (user) {
     window.CU = user;
     try {
