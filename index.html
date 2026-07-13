@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
 
+
+
   <script>
     // Safety timer to hide loading screen no matter what
     setTimeout(function() {
@@ -18,6 +20,7 @@
       if (ld) ld.style.display = 'none';
     }, 4000);
   </script>
+
 
   <script>
     window.loginEmail = function() {
@@ -43,8 +46,38 @@
       }
     };
   </script>
+
+<style>
+  #loading { display: none !important; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+</style>
+
+<script>
+  window.onload = function() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('screen-entry').classList.add('active');
+  };
+  
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+  
+  function pickEntryType(type) {
+    console.log('Picked role:', type);
+  }
+</script>
 </head>
 <body>
+
+
+
+
+
+
+
+
 
 
 
@@ -68,39 +101,7 @@
 
 
 
-<!-- ===== TOAST ===== -->
-<div id="toast" class="toast"></div>
 
 
 
 
-
-
-
-
-<!-- ===== ENTRY SCREEN ===== -->
-<div id="screen-entry" class="screen active">
-  <div class="auth-logo" style="margin-bottom:36px">
-    <div class="auth-logo-ic">🛵</div>
-    <h1>منايف <span>GO</span></h1>
-    <p>توصيل سريع في المنايف</p>
-  </div>
-  <div class="role-card">
-    <h2>اختر دورك</h2>
-    <p>هنوصلك لأفضل متجر ومناديب التوصيل</p>
-    <div class="role-grid">
-      <div class="role-btn" onclick="showScreen('screen-auth');pickEntryType('customer')">
-        <span class="ri">👤</span><strong>عميل</strong><small>اطلب من المتاجر</small>
-      </div>
-      <div class="role-btn" onclick="showScreen('screen-auth');pickEntryType('driver')">
-        <span class="ri">🛵</span><strong>مندوب</strong><small>وصل الطلبات</small>
-      </div>
-      <div class="role-btn" onclick="showScreen('screen-auth');pickEntryType('merchant')">
-        <span class="ri">🏪</span><strong>تاجر</strong><small>بيع منتجاتك</small>
-      </div>
-      <div class="role-btn" onclick="showScreen('screen-auth');pickEntryType('admin')">
-        <span class="ri">⚙️</span><strong>إدارة</strong><small>لوحة التحكم</small>
-      </div>
-    </div>
-  </div>
-</div>
