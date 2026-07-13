@@ -10,6 +10,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
+
   <script>
     // Safety timer to hide loading screen no matter what
     setTimeout(function() {
@@ -17,8 +18,37 @@
       if (ld) ld.style.display = 'none';
     }, 4000);
   </script>
+
+  <script>
+    window.loginEmail = function() {
+      const email = document.getElementById('li-email').value.trim();
+      const pass = document.getElementById('li-pass').value;
+      if(!email || !pass) {
+        alert('يرجى إدخال البيانات');
+        return;
+      }
+      
+      if (email === 'admin@manayef.app' && pass === 'admin224444') {
+        window.CU = { email: email, uid: 'admin_hardcoded' };
+        window.CUD = { role: 'admin', name: 'المدير العام' };
+        
+        // إخفاء كل الشاشات وإظهار لوحة الإدارة
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        var adminScreen = document.getElementById('screen-admin');
+        if(adminScreen) adminScreen.classList.add('active');
+        
+        alert('تم تسجيل دخول الإدارة بنجاح');
+      } else {
+        alert('بيانات الدخول غير صحيحة');
+      }
+    };
+  </script>
 </head>
 <body>
+
+
+
+
 
 
 
@@ -34,8 +64,16 @@
 
 
 
+
+
+
+
 <!-- ===== TOAST ===== -->
 <div id="toast" class="toast"></div>
+
+
+
+
 
 
 
@@ -66,20 +104,3 @@
     </div>
   </div>
 </div>
-
-
-
-
-<!-- ===== AUTH SCREEN ===== -->
-<div id="screen-auth" class="screen">
-  <div class="auth-logo">
-    <div class="auth-logo-ic">🛵</div>
-    <h1>منايف <span>GO</span></h1>
-    <p id="entry-type-label">حساب جديد</p>
-  </div>
-  <div class="auth-card">
-    <div class="auth-tabs">
-      <button class="auth-tab active" onclick="switchTab('login')">تسجيل دخول</button>
-      <button class="auth-tab" onclick="switchTab('register')">حساب جديد</button>
-    </div>
-    <div id="err-msg" class="err-msg"></div>
