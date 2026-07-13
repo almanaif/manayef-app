@@ -4,7 +4,15 @@
 
 
 
+
+
+
+
 import { db, auth, gProvider, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, limit, deleteDoc, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail, CLOUDINARY_CLOUD, CLOUDINARY_PRESET, STORE_LOC, DEFAULT_LOC } from './firebase.js';
+
+
+
+
 
 
 
@@ -15,6 +23,10 @@ const SC = {new:'sb sb-new',accepted:'sb sb-accepted',preparing:'sb sb-preparing
 const STEPS = ['new','accepted','preparing','ready','delivering','done'];
 const STEP_ICONS = ['🆕','✅','👨‍🍳','📦','🛵','✅'];
 const STEP_LABELS = ['جديد','تم القبول','جاري التحضير','جاهز للاستلام','في الطريق','تم التسليم'];
+
+
+
+
 
 
 
@@ -36,6 +48,10 @@ function loadProducts() {
     if (document.getElementById('screen-store')?.classList.contains('active')) renderProds(activeCat);
   }, err => { showToast('تعذر تحميل المنتجات','err'); });
 }
+
+
+
+
 
 
 
@@ -67,13 +83,19 @@ function loadCoupons() {
 
 
 
-// ===== BANNERS LOADER =====
-let bannersUnsub = null;
-function loadBanners() {
-  if (bannersUnsub) return;
-  const q = query(collection(db,'banners'), orderBy('order','asc'));
-  bannersUnsub = onSnapshot(q, snap => {
-    const now = new Date();
-    const items = [];
-    snap.forEach(d => {
-      const b = d.data();
+
+
+
+
+// Export to window for HTML onclick handlers
+window.showScreen = showScreen;
+window.pickEntryType = pickEntryType;
+window.switchTab = switchTab;
+window.doLogin = doLogin;
+window.loginGoogle = loginGoogle;
+window.hideLoading = hideLoading;
+
+function hideLoading() {
+    const ld = document.getElementById('loading');
+    if (ld) ld.classList.add('hide');
+}
