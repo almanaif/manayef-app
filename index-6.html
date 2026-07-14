@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>منايف GO</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="manifest" id="manifest-link">
+  <meta name="theme-color" content="#FF6B00">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+</head>
+<body>
+
+<!-- ===== LOADING ===== -->
+<div id="loading">
+  <div class="ld-ic">🛵</div>
+  <div class="ld-name">منايف <span>GO</span></div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+  <div class="ld-sub">جاري التحميل...</div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div id="toast" class="toast"></div>
+
+<!-- ===== ENTRY SCREEN ===== -->
+<div id="screen-entry" class="screen active">
+  <div class="auth-logo" style="margin-bottom:36px">
+    <div class="auth-logo-ic">🛵</div>
+    <h1>منايف <span>GO</span></h1>
+    <p>توصيل سريع في المنايف</p>
+  </div>
+  <div class="role-card">
+    <h2>اختر دورك</h2>
+    <p>هنوصلك لأفضل متجر ومناديب التوصيل</p>
+    <div class="role-grid">
+      <div class="role-btn" onclick="showScreen('screen-auth');pickEntryType('customer')">
+        <span class="ri">👤</span><strong>عميل</strong><small>اطلب من المتاجر</small>
+      </div>
+      <div class="role-btn" onclick="showScreen('screen-auth');pickEntryType('driver')">
+        <span class="ri">🛵</span><strong>مندوب</strong><small>وصل الطلبات</small>
+      </div>
+      <div class="role-btn" onclick="showScreen('screen-auth');pickEntryType('merchant')">
+        <span class="ri">🏪</span><strong>تاجر</strong><small>بيع منتجاتك</small>
+      </div>
+      <div class="role-btn" onclick="showScreen('screen-auth');pickEntryType('admin')">
+        <span class="ri">⚙️</span><strong>إدارة</strong><small>لوحة التحكم</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AUTH SCREEN ===== -->
+<div id="screen-auth" class="screen">
+  <div class="auth-logo">
+    <div class="auth-logo-ic">🛵</div>
+    <h1>منايف <span>GO</span></h1>
+    <p id="entry-type-label">حساب جديد</p>
+  </div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">تسجيل دخول</button>
+      <button class="auth-tab" onclick="switchTab('register')">حساب جديد</button>
+    </div>
+    <div id="err-msg" class="err-msg"></div>
+
+    <!-- LOGIN -->
+    <div id="auth-login">
+      <button class="google-btn" onclick="loginGoogle()">
+        <svg class="google-ic" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        سجل دخول بـ Google
+      </button>
+      <div class="divider"><span>أو</span></div>
+      <div class="inp-g"><label>البريد الإلكتروني</label><input type="email" id="lmail" class="inp" placeholder="email@example.com"></div>
+      <div class="inp-g"><label>كلمة المرور</label><input type="password" id="lpass" class="inp" placeholder="كلمة المرور"></div>
+      <button class="btn-p" id="login-btn" onclick="doLogin()"><span class="spinner" id="lsp"></span> تسجيل دخول</button>
+      <p style="text-align:center;margin-top:10px"><button onclick="showForgot()" style="background:none;border:none;color:var(--p);font-family:'Cairo',sans-serif;font-size:12px;cursor:pointer">نسيت كلمة المرور؟</button></p>
+      <p style="text-align:center;margin-top:6px"><button onclick="showEmailOTP()" style="background:none;border:none;color:var(--p);font-family:'Cairo',sans-serif;font-size:12px;cursor:pointer">دخول بدون كلمة مرور (رابط)</button></p>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="auth-register" style="display:none">
+      <!-- CUSTOMER -->
+      <div id="reg-customer-fields">
+        <div class="inp-g"><label>الاسم الكامل</label><input type="text" id="rname" class="inp" placeholder="محمد أحمد"></div>
+        <div class="inp-g"><label>رقم التليفون</label><input type="tel" id="rphone" class="inp" placeholder="01xxxxxxxxx"></div>
+        <div class="inp-g"><label>العنوان</label><input type="text" id="raddress" class="inp" placeholder="شارع الجمهورية - المنايف"></div>
+        <div class="inp-g"><label>البريد الإلكتروني</label><input type="email" id="rmail" class="inp" placeholder="email@example.com"></div>
+        <div class="inp-g"><label>كلمة المرور</label><input type="password" id="rpass" class="inp" placeholder="6 أحرف على الأقل"></div>
+      </div>
+      <!-- MERCHANT -->
+      <div id="reg-merchant-fields" style="display:none">
+        <div class="inp-g"><label>اسم المتجر</label><input type="text" id="r-store-name" class="inp" placeholder="سوبرماركت المنايف"></div>
+        <div class="inp-g"><label>اسم صاحب المتجر</label><input type="text" id="r-owner-name" class="inp" placeholder="محمد أحمد"></div>
+        <div class="inp-g"><label>هاتف المتجر</label><input type="tel" id="r-store-phone" class="inp" placeholder="01xxxxxxxxx"></div>
+        <div class="inp-g"><label>هاتف صاحب المتجر</label><input type="tel" id="r-owner-phone" class="inp" placeholder="01xxxxxxxxx"></div>
+        <div class="inp-g"><label>عنوان المتجر</label><input type="text" id="r-store-addr" class="inp" placeholder="شارع الجمهورية"></div>
+        <div class="inp-g"><label>البريد الإلكتروني</label><input type="email" id="r-store-mail" class="inp" placeholder="email@example.com"></div>
+        <div class="inp-g"><label>كلمة المرور</label><input type="password" id="r-store-pass" class="inp" placeholder="6 أحرف على الأقل"></div>
+      </div>
+      <!-- DRIVER -->
+      <div id="reg-driver-fields" style="display:none">
+        <div class="inp-g"><label>الاسم الكامل</label><input type="text" id="r-drv-name" class="inp" placeholder="محمد أحمد"></div>
+        <div class="inp-g"><label>رقم التليفون</label><input type="tel" id="r-drv-phone" class="inp" placeholder="01xxxxxxxxx"></div>
+        <div class="inp-g"><label>العنوان</label><input type="text" id="r-drv-addr" class="inp" placeholder="شارع الجمهورية"></div>
+        <div class="inp-g"><label>البريد الإلكتروني</label><input type="email" id="r-drv-mail" class="inp" placeholder="email@example.com"></div>
+        <div class="inp-g"><label>كلمة المرور</label><input type="password" id="r-drv-pass" class="inp" placeholder="6 أحرف على الأقل"></div>
+      </div>
+      <button class="btn-p" id="reg-btn" onclick="doRegister()"><span class="spinner" id="rsp"></span> إنشاء الحساب</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OTP SCREEN ===== -->
+<div id="screen-otp" class="screen">
+  <div class="otp-card">
+    <div class="otp-ic">📧</div>
+    <h2>تحقق من بريدك</h2>
+    <p>تم إرسال رابط تحقق على <strong id="otp-email"></strong><br>افتح البريد واضغط على الرابط</p>
+    <p style="font-size:12px;color:var(--p);margin-top:8px">💡 افتح البريد واضغط على "دخول إلى المنايف GO"</p>
+    <button class="btn-p" onclick="showScreen('screen-auth')" style="margin-top:14px">الرجوع</button>
+  </div>
+</div>
+
+<!-- ===== CUSTOMER SCREEN ===== -->
+<div id="screen-customer" class="screen">
+  <div class="app-header">
+    <div class="hdr-loc" onclick="getLocation()"><small>📍 الموقع</small><strong>المنايف، المنوفية</strong></div>
+    <div class="hdr-acts">
+      <button class="icon-btn" onclick="openNotifs()">🔔<span class="badge" id="notif-c">0</span></button>
+      <button class="icon-btn" onclick="openCart()">🛒<span class="badge" id="cart-b">0</span></button>
+    </div>
+  </div>
+
+  <div id="tab-home">
+    <div class="search-wrap"><div class="search-inner">🔍<input type="text" placeholder="ابحث عن منتج أو متجر..." oninput="doSearch(this.value)"></div></div>
+    <div id="search-results"></div>
+    <div class="cats-sec">
+      <div class="cats-scroll" id="cats-scroll"></div>
+    </div>
+    <div class="banner-sec" id="banner-sec"><div class="bscroll" id="banner-scroll"></div></div>
+    <div class="pts-bar" onclick="custNav('rewards',document.querySelectorAll('#screen-customer .nav-item')[2])">
+      <div class="pts-ic">⭐</div>
+      <div class="pts-info"><h3>نقاط الولاء</h3><p>كل 10 جنيه = نقطة واحدة</p></div>
+      <div class="pts-count"><span class="pts-num" id="user-pts">0</span><small>نقطة</small></div>
+    </div>
+    <div class="off-sec" id="off-sec">
+      <div class="sec-hdr"><span class="sec-title">عروض حصرية</span></div>
+      <div class="off-scroll" id="off-scroll"></div>
+    </div>
+    <button class="anyreq-btn" onclick="openAnyReq()"><div class="ar-ic">📋</div><div class="ar-info"><h3>لديك طلب؟ اطلبه</h3><p>أخبرنا بأي منتج محتاجه وهنجيبهولك</p></div></button>
+    <div class="stores-sec">
+      <div class="sec-hdr"><span class="sec-title">المتاجر</span></div>
+      <div id="stores-list"></div>
+    </div>
+  </div>
+
+  <div id="tab-orders" style="display:none;padding:12px 14px">
+    <h2 style="font-size:18px;font-weight:900;margin-bottom:12px">طلباتي</h2>
+    <div id="orders-list"></div>
+  </div>
+
+  <div id="tab-rewards" style="display:none;padding:12px 14px">
+    <div class="pts-card"><div><div class="pl">نقاط الولاء</div><div class="pv" id="pts-big">0</div></div><div style="font-size:38px">⭐</div></div>
+    <p style="font-size:12px;color:var(--mu);margin-bottom:12px">كل 10 جنيه = نقطة واحدة</p>
+    <div id="orders-list"></div>
+  </div>
+
+  <div id="tab-profile" style="display:none">
+    <div class="profile-page">
+      <div class="profile-hero"><div class="profile-av2" id="cust-av">👤</div><div><h3 id="cust-name">--</h3><p id="cust-email">--</p></div></div>
+      <div class="pts-card"><div><div class="pl">نقاط الولاء</div><div class="pv" id="pts-prof">0</div></div><div style="font-size:32px">⭐</div></div>
+      <div class="menu-list"><button class="menu-item" onclick="custNav('orders',document.querySelectorAll('#screen-customer .nav-item')[1])"><div class="mi-ic">📦</div><div class="mi-text"><strong>طلباتي</strong><small>تتبع طلباتك</small></div><span class="mi-arr">←</span></button>
+      <button class="menu-item" onclick="custNav('rewards',document.querySelectorAll('#screen-customer .nav-item')[2])"><div class="mi-ic">⭐</div><div class="mi-text"><strong>نقاط الولاء</strong><small><span id="pts-menu">0</span> نقطة</small></div><span class="mi-arr">←</span></button>
+      <button class="menu-item" onclick="doLogout()"><div class="mi-ic" style="background:rgba(239,68,68,.1)">🚪</div><div class="mi-text"><strong>تسجيل الخروج</strong><small>خروج من حسابك</small></div><span class="mi-arr">←</span></button></div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="custNav('home',this)"><span class="nav-ic">🏠</span>الرئيسية</button>
+    <button class="nav-item" onclick="custNav('orders',this)"><span class="nav-ic">📦</span>طلباتي</button>
+    <button class="nav-item" onclick="custNav('rewards',this)"><span class="nav-ic">⭐</span>نقاط</button>
+    <button class="nav-item" onclick="custNav('profile',this)"><span class="nav-ic">👤</span>حسابي</button>
+  </div>
+</div>
+
+<!-- ===== STORE DETAIL ===== -->
+<div id="screen-store" class="screen">
+  <div class="store-hero">
+    <div class="store-hero-img" style="background:linear-gradient(135deg,#1A1A2E,#0F3460)">🏪</div>
+    <button class="hero-back" onclick="showScreen('screen-customer')">→</button>
+    <div class="hero-info"><h2 id="store-detail-name">متجر</h2><div class="hero-meta"><span>📦 توصيل متاح</span></div><div class="hero-acts"><button class="ha-btn ha-call" onclick="showToast('اتصال قريباً')">📞 اتصل</button><button class="ha-btn ha-wa" onclick="showToast('واتساب قريباً')">💬 واتساب</button></div></div>
+  </div>
+  <div class="pc-bar"><div class="pc-scroll" id="pc-scroll"><button class="pc-btn active" onclick="filterProds('all',this)">الكل</button></div></div>
+  <div class="prods-sec" id="prods-section"></div>
+  <div class="cart-bar-fixed" id="cart-bar-store"><button onclick="goCheckout()"><span>🛒 <span id="cart-count-s">0</span> عناصر</span><span><span id="cart-total-s">0</span> ج</span></button></div>
+</div>
+
+<!-- ===== ORDER TRACKING ===== -->
+<div id="screen-track" class="screen">
+  <div class="track-hero"><h2>تتبع طلبك</h2><p>آخر تحديث</p><span class="track-id" id="track-order-id">#XXXXXX</span></div>
+  <div class="track-steps-outer"><h3>حالة الطلب</h3><div class="track-timeline" id="track-timeline"></div></div>
+  <div class="map-wrap"><div id="tracking-map"></div></div>
+  <div class="map-card"><h3>تفاصيل الطلب</h3>
+    <div class="map-info-row"><span class="lbl">المندوب</span><span class="val" id="track-driver">بانتظار المندوب...</span></div>
+    <div class="map-info-row"><span class="lbl">وقت التوصيل</span><span class="val" id="track-eta">15-25 دقيقة</span></div>
+    <div class="map-info-row"><span class="lbl">الإجمالي</span><span class="val" id="track-total">0 ج</span></div>
+  </div>
+  <div class="rating-prompt" id="rating-section" style="display:none">
+    <h3>قيّم تجربتك</h3><p>ساعدنا نحسّن الخدمة</p>
+    <div class="stars-row"><span class="star" onclick="setStar(1)">⭐</span><span class="star" onclick="setStar(2)">⭐</span><span class="star" onclick="setStar(3)">⭐</span><span class="star" onclick="setStar(4)">⭐</span><span class="star" onclick="setStar(5)">⭐</span></div>
+    <div class="rating-target"><div class="rt-card active" id="rt-store" onclick="selectRatingTarget('store')"><span class="ri">🏪</span><strong>المتجر</strong></div><div class="rt-card" id="rt-driver" onclick="selectRatingTarget('driver')"><span class="ri">🛵</span><strong>المندوب</strong></div></div>
+    <textarea id="rating-comment" class="inp" rows="2" placeholder="اكتب تعليقك (اختياري)" style="margin-bottom:12px;resize:none"></textarea>
+    <button class="btn-p" onclick="submitRating()">إرسال التقييم</button>
+  </div>
+  <div style="padding:14px"><button class="btn-p" onclick="showScreen('screen-customer')" style="background:var(--s)">رجوع للرئيسية</button></div>
+</div>
+
+<!-- ===== DRIVER REGISTER ===== -->
+<div id="screen-driver-register" class="screen">
+  <div class="dreg-hdr"><h1>تسجيل كمناديب توصيل</h1><p>ابدأ كسب معانا! سجل بياناتك وابدأ توصيل الطلبات</p><div class="dreg-steps"><div class="ds done"></div><div class="ds active"></div><div class="ds"></div></div></div>
+  <div class="dreg-body" id="dreg-form">
+    <div class="dreg-sec"><h3>البيانات الشخصية</h3><div class="inp-g"><label>الاسم الكامل</label><input type="text" id="d-name" class="inp" placeholder="محمد أحمد علي"></div><div class="inp-g"><label>رقم التليفون</label><input type="tel" id="d-phone" class="inp" placeholder="01xxxxxxxxx"></div><div class="inp-g"><label>العنوان</label><input type="text" id="d-addr" class="inp" placeholder="المنايف، المنوفية"></div></div>
+    <div class="dreg-sec"><h3>📄 المستندات المطلوبة</h3><div class="upload-box" onclick="simUp('d-id1','صورة رقم قومي أمامي')" id="d-id1"><div class="u-ic">🪪</div><p>صورة الرقم القومي من الأمام</p></div><div class="upload-box" onclick="simUp('d-id2','صورة رقم قومي خلفي')" id="d-id2"><div class="u-ic">🪪</div><p>صورة الرقم القومي من الخلف</p></div><div class="upload-box" onclick="simUp('d-photo','صورة شخصية')" id="d-photo"><div class="u-ic">📷</div><p>صورة شخصية حديثة</p></div><div class="upload-box" onclick="simUp('d-license','رخصة موتوسيكل')" id="d-license"><div class="u-ic">🏍️</div><p>رخصة قيادة الموتوسيكل</p></div></div>
+    <div class="dreg-sec"><h3>بنود وشروط التوصيل</h3><div class="terms-box"><div class="term-row"><span class="term-ck">📋</span><span class="term-txt">التزام بالمواعيد والتوصيل خلال 30 دقيقة</span></div><div class="term-row"><span class="term-ck">💰</span><span class="term-txt">رسوم التوصيل 15% من قيمة الطلب (يتحمل العميل)</span></div><div class="term-row"><span class="term-ck">🛡️</span><span class="term-txt">المنصة غير مسؤولة عن البضائع بعد التسليم</span></div></div><div class="agree-row" onclick="toggleAgree()"><div class="agree-box" id="agree-box"></div><span>أوافق على البنود والشروط</span></div></div>
+    <button class="btn-p" id="dreg-btn" onclick="submitDrvReg()" style="margin-bottom:24px"><span class="spinner" id="dreg-sp"></span> إرسال طلب الانضمام</button>
+  </div>
+  <div class="pending-wrap" id="dreg-pending" style="display:none"><div class="pi">⏳</div><h2>طلبك قيد المراجعة</h2><p>سيراجع فريقنا طلبك<br>هيتم التواصل معاك خلال 24 ساعة<br>📱 هيوصلك إشعار لما الحساب يِتقبل</p><button class="btn-p" onclick="showScreen('screen-entry')" style="margin-top:20px">رجوع للرئيسية</button></div>
+</div>
+
+<!-- ===== DRIVER APP ===== -->
+<div id="screen-driver" class="screen">
+  <div class="drv-hdr">
+    <div class="drv-top"><div><h2 id="drv-name">أهلاً 👋</h2><p>ابدأ يومك</p></div><div class="online-tog" onclick="toggleOnline(this)"><div class="tog-dot on" id="tog-dot"></div><span id="tog-lbl" style="font-size:12px;font-weight:700;color:#fff">متاح</span></div></div>
+    <div class="drv-stats">
+      <div class="drv-stat"><span class="sv" id="drv-t-ords">0</span><span class="sl">طلبات اليوم</span></div>
+      <div class="drv-stat"><span class="sv" id="drv-t-earn">0 ج</span><span class="sl">أرباح اليوم</span></div>
+      <div class="drv-stat"><span class="sv" id="drv-w-ords">0</span><span class="sl">طلبات الأسبوع</span></div>
+    </div>
+  </div>
+
+  <div id="drv-home-tab">
+    <div class="notif-banner" id="new-ord-banner" style="display:none"><div class="nb-ic">📦</div><div class="nb-info"><h4>طلب جديد!</h4><p id="new-ord-txt">طلب جديد بانتظارك</p></div><button class="nb-btn" onclick="acceptOrd()">قبول</button></div>
+    <div class="drv-extra" id="drv-extra"><div class="de"><span class="di">📦</span><span class="dv" id="drv-total-ords">0</span><span class="dl">إجمالي الطلبات</span></div><div class="de"><span class="di">💰</span><span class="dv" id="drv-month-earn">0 ج</span><span class="dl">أرباح الشهر</span></div></div>
+    <div class="drv-ords"><div class="sec-hdr" style="padding:0 14px 10px"><span class="sec-title">الطلبات الحالية</span></div><div id="drv-ords-list"></div></div>
+    <div class="drv-map-wrap" id="drv-map-sec" style="display:none"><div id="driver-map"></div></div>
+  </div>
+
+  <div id="drv-stats-tab" style="display:none">
+    <div class="drv-analytics">
+      <div class="rating-card"><span class="rating-num">4.8</span><div><span class="rating-sub">تقييمك ⭐</span></div></div>
+      <div class="stats-g"><div class="stat-c"><span class="si">📦</span><span class="sv2" id="drv-w-earn">0 ج</span><span class="sl2">أرباح الأسبوع</span></div><div class="stat-c"><span class="si">💰</span><span class="sv2" id="drv-wallet2">0 ج</span><span class="sl2">المحفظة</span></div></div>
+      <div class="earn-chart"><h3>الأرباح الأسبوعية</h3><div class="chart-bars" id="earn-bars"></div></div>
+    </div>
+  </div>
+
+  <div id="drv-profile-tab" style="display:none">
+    <div class="drv-profile">
+      <div class="profile-big"><div class="profile-av" id="drv-av">👤</div><div><h3 id="drv-prof-name">--</h3><p id="drv-prof-sub">مندوب توصيل</p></div></div>
+      <div class="wallet-card"><div class="wc-bal"><div class="wl">المحفظة</div><div class="wa" id="drv-wallet">0 ج</div></div><button class="withdraw-btn" onclick="showToast('سحب الأموال قريباً 💰')">سحب</button></div>
+      <div class="menu-list">
+        <button class="menu-item" onclick="showToast('التقييمات قريباً')"><div class="mi-ic">⭐</div><div class="mi-text"><strong>تقييماتي</strong><small>4.8 من 5</small></div><span class="mi-arr">←</span></button>
+        <button class="menu-item" onclick="showToast('تغيير العنوان قريباً')"><div class="mi-ic">📍</div><div class="mi-text"><strong>عنواني</strong><small>تعديل العنوان الافتراضي</small></div><span class="mi-arr">←</span></button>
+        <button class="menu-item" onclick="doLogout()"><div class="mi-ic" style="background:rgba(239,68,68,.1)">🚪</div><div class="mi-text"><strong>تسجيل الخروج</strong><small>خروج من حسابك</small></div><span class="mi-arr">←</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="drvNav('home',this)"><span class="nav-ic">📦</span>طلبات</button>
+    <button class="nav-item" onclick="drvNav('stats',this)"><span class="nav-ic">📊</span>إحصائيات</button>
+    <button class="nav-item" onclick="drvNav('profile',this)"><span class="nav-ic">👤</span>حسابي</button>
+    <button class="nav-item" onclick="toggleDriverMap()"><span class="nav-ic">🗺️</span>خريطة</button>
+  </div>
+</div>
+
+<!-- ===== MERCHANT APP ===== -->
+<div id="screen-merchant" class="screen">
+  <div class="merch-hdr"><h1 id="merch-name">متجرك</h1><p>لوحة التحكم - إدارة متجرك</p></div>
+  <div class="merch-stats">
+    <div class="ms-c"><div class="mv" id="m-today-ords">0</div><div class="ml">طلبات اليوم</div></div>
+    <div class="ms-c"><div class="mv" id="m-today-rev">0 ج</div><div class="ml">إيرادات اليوم</div></div>
+    <div class="ms-c"><div class="mv" id="m-prods">0</div><div class="ml">منتجات</div></div>
+  </div>
+  <button class="add-prod-btn" onclick="openAddProd()">➕ إضافة منتج جديد</button>
+  <div class="drv-ords" style="padding:0 14px"><div class="sec-hdr" style="margin-bottom:10px"><span class="sec-title">طلبات المتجر</span></div><div id="merch-ords-list"></div></div>
+  <div class="drv-ords" style="padding:0 14px;margin-top:14px"><div class="sec-hdr" style="margin-bottom:10px"><span class="sec-title">منتجاتي</span></div><div id="merch-prods-list"></div></div>
+  <div style="padding:14px"><button class="btn-p" onclick="doLogout()" style="background:var(--s)">تسجيل الخروج</button></div>
+</div>
+
+<!-- ===== ADMIN PANEL ===== -->
+<div id="screen-admin" class="screen">
+  <div class="adm-top"><div class="adm-logo">منايف <span>GO</span></div><button class="icon-btn" onclick="openNotifs()" style="color:#fff;background:rgba(255,255,255,.1)">🔔<span class="badge" id="adm-notif-c">0</span></button></div>
+  <div class="adm-nav">
+    <button class="adm-nb active" onclick="admNav('dashboard',this)">📊 لوحة</button>
+    <button class="adm-nb" onclick="admNav('drivers',this)">🛵 مناديب</button>
+    <button class="adm-nb" onclick="admNav('stores',this)">🏪 متاجر</button>
+    <button class="adm-nb" onclick="admNav('orders',this)">📦 طلبات</button>
+    <button class="adm-nb" onclick="admNav('users',this)">👤 عملاء</button>
+    <button class="adm-nb" onclick="admNav('finance',this)">💰 مالي</button>
+    <button class="adm-nb" onclick="admNav('cats',this)">🗂️ أقسام</button>
+    <button class="adm-nb" onclick="admNav('banners',this)">🖼️ بانرات</button>
+    <button class="adm-nb" onclick="admNav('coupons',this)">🎟️ قسائم</button>
+    <button class="adm-nb" onclick="admNav('map',this)">🗺️ خريطة</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="adm-dashboard" class="adm-content">
+    <div class="kpi-grid">
+      <div class="kpi or"><span class="ki">📦</span><span class="kv" id="adm-t-ords">0</span><span class="kl">طلبات اليوم</span></div>
+      <div class="kpi gn"><span class="ki">💰</span><span class="kv" id="adm-t-rev">0 ج</span><span class="kl">إيرادات اليوم</span></div>
+      <div class="kpi bl"><span class="ki">👤</span><span class="kv" id="adm-t-users">0</span><span class="kl">العملاء</span></div>
+      <div class="kpi yw"><span class="ki">🛵</span><span class="kv" id="adm-act-drvs">0</span><span class="kl">المناديب النشطين</span></div>
+    </div>
+    <div class="adm-card"><h3>الطلبات الأخيرة</h3><div id="adm-recent-ords"></div></div>
+  </div>
+
+  <!-- Drivers -->
+  <div id="adm-drivers" class="adm-content" style="display:none">
+    <div class="adm-card"><h3>مناديب منتظرين <span id="adm-pend-c">0</span></h3><div id="adm-pend-drvs"></div></div>
+    <div class="adm-card"><h3>كل المناديب <span id="adm-drvs-c">0</span><div class="fb2" style="margin-top:8px"><button class="fc2 active" onclick="filtDrvs('all',this)">الكل</button><button class="fc2" onclick="filtDrvs('active',this)">✅ نشط</button><button class="fc2" onclick="filtDrvs('pending',this)">⏳ معلق</button></div></h3><div id="adm-drvs-list"></div></div>
+  </div>
+
+  <!-- Stores -->
+  <div id="adm-stores" class="adm-content" style="display:none">
+    <div class="adm-card"><h3>المتاجر <span id="adm-stores-c">0</span></h3><div id="adm-stores-list"></div></div>
+  </div>
+
+  <!-- Orders -->
+  <div id="adm-orders" class="adm-content" style="display:none">
+    <div class="adm-card"><h3>كل الطلبات</h3><div id="adm-all-ords"></div></div>
+  </div>
+
+  <!-- Users -->
+  <div id="adm-users" class="adm-content" style="display:none">
+    <div class="adm-card"><h3>العملاء <span id="adm-users-c">0</span></h3><div id="adm-users-list"></div></div>
+  </div>
+
+  <!-- Finance -->
+  <div id="adm-finance" class="adm-content" style="display:none">
+    <div class="adm-card"><h3>ملخص مالي</h3>
+      <div class="comm-box"><h3>الإيرادات والعمولة</h3><div class="comm-grid">
+        <div class="comm-item"><span class="cv" id="adm-total-rev">0 ج</span><span class="cl">إجمالي الإيرادات</span></div>
+        <div class="comm-item"><span class="cv" id="adm-total-comm">0 ج</span><span class="cl">إجمالي العمولة</span></div>
+        <div class="comm-item"><span class="cv" id="adm-comm-t">0 ج</span><span class="cl">عمولة اليوم</span></div>
+        <div class="comm-item"><span class="cv" id="adm-drv-pay">0 ج</span><span class="cl">مدفوعات المناديب</span></div>
+      </div><div class="comm-edit"><label>نسبة العمولة:</label><input type="number" id="comm-val" class="comm-inp" value="10"><button class="comm-save" onclick="saveComm()">حفظ</button></div></div>
+      <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--r2);text-align:center"><strong id="adm-avg-ord">0 ج</strong><small style="color:var(--mu);display:block;margin-top:3px">متوسط قيمة الطلب</small></div>
+    </div>
+  </div>
+
+  <!-- Categories -->
+  <div id="adm-cats" class="adm-content" style="display:none">
+    <div class="adm-card"><h3>إدارة الأقسام</h3>
+      <button class="btn-p" onclick="openAddCat()" style="margin-bottom:12px">➕ إضافة قسم</button>
+      <div id="adm-cats-list"></div>
+    </div>
+  </div>
+
+  <!-- Banners -->
+  <div id="adm-banners" class="adm-content" style="display:none">
+    <div class="adm-card"><h3>إدارة البانرات</h3>
+      <button class="btn-p" onclick="openAddBanner()" style="margin-bottom:12px">➕ إضافة بانر</button>
+      <div id="adm-banners-list"></div>
+    </div>
+  </div>
+
+  <!-- Coupons -->
+  <div id="adm-coupons" class="adm-content" style="display:none">
+    <div class="adm-card"><h3>إدارة القسائم</h3>
+      <button class="btn-p" onclick="openAddCoupon()" style="margin-bottom:12px">➕ إضافة قسيمة</button>
+      <div id="adm-coupons-list"></div>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div id="adm-map" class="adm-content" style="display:none">
+    <div class="adm-map-wrap"><div id="admin-map"></div></div>
+    <div class="adm-card"><h3>المناديب على الخريطة</h3><div class="map-legend"><div class="ml-item">🛵 مندوب نشط</div><div class="ml-item">🏪 متجر</div></div></div>
+  </div>
+
+  <div class="bottom-nav" style="display:none"></div>
+</div>
+
+<!-- ===== ADD PRODUCT MODAL ===== -->
+<div class="modal-overlay" id="add-prod-modal" onclick="if(event.target===this)closeModal('add-prod-modal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">➕ إضافة منتج جديد</div>
+    <div class="inp-g"><label>اسم المنتج</label><input type="text" id="ap-name" class="inp" placeholder="مثال: أرز مصري"></div>
+    <div class="inp-g"><label>السعر (جنيه)</label><input type="number" id="ap-price" class="inp" placeholder="25"></div>
+    <div class="inp-g"><label>الوحدة</label><input type="text" id="ap-unit" class="inp" placeholder="مثال: 1 كجم"></div>
+    <div class="inp-g"><label>القسم</label><select id="ap-cat" class="inp"><option value="other">📦 عام</option></select></div>
+    <div class="inp-g"><label>أيقونة (emoji)</label><input type="text" id="ap-icon" class="inp" placeholder="🛒" value="🛒"></div>
+    <div class="modal-acts">
+      <button class="btn-ok" onclick="saveProd()">حفظ</button>
+      <button class="btn-outline" onclick="closeModal('add-prod-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ANY REQUEST MODAL ===== -->
+<div class="modal-overlay" id="any-req-modal" onclick="if(event.target===this)closeModal('any-req-modal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📋 اطلب أي حاجة</div>
+    <p style="font-size:13px;color:var(--mu);margin-bottom:12px">اكتب اللي محتاجه وإحنا هنجيبهولك</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="mb2 mb-view" onclick="quickReq('محتاج 2 كيلو فراخ')">🐔 فراخ</button>
+      <button class="mb2 mb-view" onclick="quickReq('محتاج روشتة أدوية')">💊 أدوية</button>
+      <button class="mb2 mb-view" onclick="quickReq('محتاج خبز وسمن')">🍞 خبز</button>
+    </div>
+    <textarea id="any-req-txt" class="inp" rows="3" placeholder="اكتب طلبك هنا..." style="margin-bottom:8px;resize:none"></textarea>
+    <div class="inp-g"><label>عنوانك</label><input type="text" id="any-req-addr" class="inp" placeholder="المنايف، المنوفية"></div>
+    <div class="modal-acts">
+      <button class="btn-ok" onclick="sendAnyReq()">إرسال</button>
+      <button class="btn-outline" onclick="closeModal('any-req-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NOTIFICATION PANEL ===== -->
+<div class="notif-overlay" id="notif-overlay" onclick="document.getElementById('notif-overlay').classList.remove('open')">
+  <div class="notif-panel">
+    <h2>🔔 الإشعارات</h2>
+    <div id="notif-list"></div>
+  </div>
+</div>
+
+<!-- ===== JOIN MERCHANT SCREEN ===== -->
+<div id="screen-join-merchant" class="screen">
+  <div class="jm-hdr"><h1>انضم كتاجر</h1><p>أضف متجرك على منصة المنايف GO وابدأ تستقبل الطلبات</p></div>
+  <div class="jm-body">
+    <div class="jm-sec"><h3>بيانات المتجر</h3><div class="inp-g"><label>اسم المتجر</label><input type="text" id="jm-name" class="inp" placeholder="سوبرماركت المنايف"></div><div class="inp-g"><label>رقم التليفون</label><input type="tel" id="jm-phone" class="inp" placeholder="01xxxxxxxxx"></div><div class="inp-g"><label>العنوان</label><input type="text" id="jm-addr" class="inp" placeholder="شارع الجمهورية"></div></div>
+    <div class="jm-sec"><h3>تصنيف المتجر</h3><div class="cat-grid"><div class="cat-g-btn" onclick="selMCat(this)"><span class="ic">🛒</span>بقالة</div><div class="cat-g-btn" onclick="selMCat(this)"><span class="ic">🍽️</span>مطعم</div><div class="cat-g-btn" onclick="selMCat(this)"><span class="ic">💊</span>صيدلية</div></div></div>
+    <button class="btn-ac" onclick="submitMerchant()">إرسال طلب الانضمام</button>
+  </div>
+</div>
+
+<!-- ===== DRIVER DETAIL MODAL ===== -->
+<div class="modal-overlay" id="drv-modal" onclick="if(event.target===this)closeModal('drv-modal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">تفاصيل المندوب</div>
+    <div id="drv-modal-content"></div>
+    <div class="modal-acts">
+      <button class="btn-ok" id="acc-btn">قبول</button>
+      <button class="btn-danger" id="rej-btn">رفض</button>
+      <button class="btn-outline" onclick="closeModal('drv-modal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADD CATEGORY MODAL ===== -->
+<div class="modal-overlay" id="add-cat-modal" onclick="if(event.target===this)closeModal('add-cat-modal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="cat-modal-title">➕ إضافة قسم</div>
+    <div class="inp-g"><label>اسم القسم</label><input type="text" id="ac-label" class="inp" placeholder="مثال: بقالة"></div>
+    <div class="inp-g"><label>أيقونة (emoji)</label><input type="text" id="ac-icon" class="inp" placeholder="🛒"></div>
+    <div class="inp-g"><label>الترتيب</label><input type="number" id="ac-order" class="inp" placeholder="0"></div>
+    <input type="hidden" id="ac-id" value="">
+    <div class="modal-acts">
+      <button class="btn-ok" onclick="saveCat()">حفظ</button>
+      <button class="btn-outline" onclick="closeModal('add-cat-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADD BANNER MODAL ===== -->
+<div class="modal-overlay" id="add-banner-modal" onclick="if(event.target===this)closeModal('add-banner-modal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="banner-modal-title">➕ إضافة بانر</div>
+    <div class="inp-g"><label>عنوان البانر</label><input type="text" id="ab-title" class="inp" placeholder="تخفيضات الصيف"></div>
+    <div class="inp-g"><label>تاج (badge)</label><input type="text" id="ab-tag" class="inp" placeholder="خصم 50%"></div>
+    <div class="inp-g"><label>وصف</label><input type="text" id="ab-desc" class="inp" placeholder="خصومات على كل المتاجر"></div>
+    <div class="inp-g"><label>رابط الصورة</label><input type="text" id="ab-imgurl" class="inp" placeholder="https://..."></div>
+    <div style="width:100%;height:100px;border:2px dashed var(--border);border-radius:var(--r2);margin-bottom:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg)" id="ab-img-box" onclick="uploadBannerImg()"><div class="u-ic">📷</div><p style="font-size:12px">اضغط لرفع صورة</p></div>
+    <div class="inp-g"><label>الترتيب</label><input type="number" id="ab-order" class="inp" placeholder="0"></div>
+    <div class="inp-g"><label>تاريخ البداية</label><input type="date" id="ab-start" class="inp"></div>
+    <div class="inp-g"><label>تاريخ النهاية</label><input type="date" id="ab-end" class="inp"></div>
+    <input type="hidden" id="ab-id" value="">
+    <div class="modal-acts">
+      <button class="btn-ok" onclick="saveBanner()">حفظ</button>
+      <button class="btn-outline" onclick="closeModal('add-banner-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADD COUPON MODAL ===== -->
+<div class="modal-overlay" id="add-coupon-modal" onclick="if(event.target===this)closeModal('add-coupon-modal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="coupon-modal-title">➕ إضافة قسيمة</div>
+    <div class="inp-g"><label>عنوان القسيمة</label><input type="text" id="ac2-title" class="inp" placeholder="خصم 20%"></div>
+    <div class="inp-g"><label>كود القسيمة</label><input type="text" id="ac2-code" class="inp" placeholder="SAVE20"></div>
+    <div class="inp-g"><label>تاج (badge)</label><input type="text" id="ac2-badge" class="inp" placeholder="حصري"></div>
+    <div class="inp-g"><label>أيقونة (emoji)</label><input type="text" id="ac2-icon" class="inp" placeholder="🎟️"></div>
+    <div class="inp-g"><label>وصف</label><input type="text" id="ac2-desc" class="inp" placeholder="خصم 20% على كل الطلبات"></div>
+    <div class="inp-g"><label>الترتيب</label><input type="number" id="ac2-order" class="inp" placeholder="0"></div>
+    <div class="inp-g"><label>تاريخ الانتهاء</label><input type="date" id="ac2-expiry" class="inp"></div>
+    <input type="hidden" id="ac2-id" value="">
+    <div class="modal-acts">
+      <button class="btn-ok" onclick="saveCoupon()">حفظ</button>
+      <button class="btn-outline" onclick="closeModal('add-coupon-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<!-- ===== TEMP DEBUG TOOL - REMOVE AFTER FIXING ===== -->
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
+<!-- ===== END TEMP DEBUG TOOL ===== -->
+<script type="module" src="js/firebase.js"></script>
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>
