@@ -541,3 +541,4 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);overf
 .pts-card{background:linear-gradient(135deg,var(--y),#FFA500);border-radius:var(--r);padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
 .pts-card .pl{font-size:11px;color:rgba(255,255,255,.85);margin-bottom:3px}
 .pts-card .pv{font-size:26px;font-weight:900;color:#fff}
+
