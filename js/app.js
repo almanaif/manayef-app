@@ -10,6 +10,23 @@ const STEPS = ['new','accepted','preparing','ready','delivering','done'];
 const STEP_ICONS = ['🆕','✅','👨‍🍳','📦','🛵','✅'];
 const STEP_LABELS = ['جديد','تم القبول','جاري التحضير','جاهز للاستلام','في الطريق','تم التسليم'];
 
+// ===== XSS PROTECTION =====
+// أي نص جاي من قاعدة البيانات (اسم منتج، اسم متجر، اسم مستخدم...) لازم يعدي من هنا
+// قبل ما يتحط جوه innerHTML، عشان محدش يقدر يحط <script> أو onerror داخل اسمه ويشغّل كود عند غيره.
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+// نسخة خاصة بالنصوص اللي بتتحط جوه onclick="...('نص')" لأن السياق هنا HTML attribute
+// وجوّاه كود JS في نفس الوقت، فلازم نأمّن الاتنين مع بعض.
+function escJs(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 // ===== PRODUCTS LOADER (from Firestore) =====
 let PRODS = [];
 let productsUnsub = null;
@@ -47,7 +64,7 @@ function loadCoupons() {
     if (!items.length) { if (sec) sec.style.display='none'; return; }
     if (sec) sec.style.display='block';
     if (scroll) scroll.innerHTML = items.map(c =>
-      `<div class="off-card"><div class="off-badge">${c.badge||''}</div><div class="off-icon">${c.icon||'🎟️'}</div><h4>${c.title||''}</h4><p>${c.description||''}</p><div class="off-code">${c.code||''}</div></div>`
+      `<div class="off-card"><div class="off-badge">${esc(c.badge)}</div><div class="off-icon">${esc(c.icon)||'🎟️'}</div><h4>${esc(c.title)}</h4><p>${esc(c.description)}</p><div class="off-code">${esc(c.code)}</div></div>`
     ).join('');
   });
 }
@@ -72,8 +89,8 @@ function loadBanners() {
     if (!items.length) { if (sec) sec.style.display='none'; return; }
     if (sec) sec.style.display='block';
     if (scroll) scroll.innerHTML = items.map(b => {
-      const bg = b.imageUrl ? `background-image:url('${b.imageUrl}');background-size:cover;background-position:center` : `background:linear-gradient(135deg,#FF6B00,#FF4500)`;
-      return `<div class="bcard" style="${bg}" onclick="${b.storeId?`openStore('${b.storeId}')`:''}"><div class="bc"><span class="btag">${b.tag||''}</span><h3>${b.title||''}</h3><p>${b.description||''}</p></div></div>`;
+      const bg = b.imageUrl ? `background-image:url('${esc(b.imageUrl)}');background-size:cover;background-position:center` : `background:linear-gradient(135deg,#FF6B00,#FF4500)`;
+      return `<div class="bcard" style="${bg}" onclick="${b.storeId?`openStore('${esc(b.storeId)}')`:''}"><div class="bc"><span class="btag">${esc(b.tag)}</span><h3>${esc(b.title)}</h3><p>${esc(b.description)}</p></div></div>`;
     }).join('');
   });
 }
@@ -87,14 +104,14 @@ function loadCategories() {
   categoriesUnsub = onSnapshot(q, snap => {
     CATS = {};
     const items = [];
-    snap.forEach(d => { const c = d.data(); CATS[d.id] = `${c.icon||''} ${c.label||''}`.trim(); items.push({id:d.id, ...c}); });
+    snap.forEach(d => { const c = d.data(); CATS[d.id] = esc(`${c.icon||''} ${c.label||''}`.trim()); items.push({id:d.id, ...c}); });
     const pcScroll = document.getElementById('pc-scroll');
     if (pcScroll) {
       pcScroll.innerHTML = `<button class="pc-btn active" onclick="filterProds('all',this)">الكل</button>` +
-        items.map(c => `<button class="pc-btn" onclick="filterProds('${c.id}',this)">${c.icon||''} ${c.label||''}</button>`).join('');
+        items.map(c => `<button class="pc-btn" onclick="filterProds('${c.id}',this)">${esc(c.icon)} ${esc(c.label)}</button>`).join('');
     }
     const apCat = document.getElementById('ap-cat');
-    if (apCat) apCat.innerHTML = items.map(c => `<option value="${c.id}">${c.icon||''} ${c.label||''}</option>`).join('') || '<option value="other">📦 عام</option>';
+    if (apCat) apCat.innerHTML = items.map(c => `<option value="${c.id}">${esc(c.icon)} ${esc(c.label)}</option>`).join('') || '<option value="other">📦 عام</option>';
   });
 }
 
@@ -113,16 +130,18 @@ function loadStores() {
       const m = d.data();
       const catMap = {'بقالة':'super','مطعم':'food','صيدلية':'pharma','متجر':'shop','حلويات':'food','خدمات':'shop'};
       const cat = catMap[m.category] || 'super';
+      const sName = m.storeName || m.name || 'متجر';
+      const sPhone = m.storePhone || m.phone || '';
       html += `<div class="store-card" data-cat="${cat}">
         <div class="store-img" style="background:linear-gradient(135deg,#1A1A2E,#0F3460)"><span style="font-size:58px">🏪</span><div class="s-open s-on">مفتوح</div></div>
         <div class="store-body">
-          <h3>${m.storeName||m.name||'متجر'}</h3>
+          <h3>${esc(sName)}</h3>
           <div class="store-meta"><span>📦 توصيل متاح</span><span>🛵 رسوم التوصيل متاحة</span></div>
-          <div class="store-tags"><span class="store-tag">${m.category||'بقالة'}</span></div>
+          <div class="store-tags"><span class="store-tag">${esc(m.category)||'بقالة'}</span></div>
           <div class="store-acts">
-            <button class="sa-btn sa-call" onclick="event.stopPropagation();callStore('${m.storePhone||m.phone||''}')">📞 اتصال</button>
-            <button class="sa-btn sa-wa" onclick="event.stopPropagation();openWA('${m.storePhone||m.phone||''}','${m.storeName||m.name||''}')">💬 واتساب</button>
-            <button class="sa-btn sa-order" onclick="showScreen('screen-store');loadProductsByStore('${d.id}','${m.storeName||m.name||''}')">🛒 اطلب</button>
+            <button class="sa-btn sa-call" onclick="event.stopPropagation();callStore('${escJs(sPhone)}')">📞 اتصال</button>
+            <button class="sa-btn sa-wa" onclick="event.stopPropagation();openWA('${escJs(sPhone)}','${escJs(sName)}')">💬 واتساب</button>
+            <button class="sa-btn sa-order" onclick="showScreen('screen-store');loadProductsByStore('${d.id}','${escJs(sName)}')">🛒 اطلب</button>
           </div>
         </div>
       </div>`;
@@ -155,7 +174,7 @@ function renderProds(cat) {
     grouped[c].forEach(p => {
       const inCart = window.cart.find(x=>x.id===p.id);
       const qty = inCart?.qty||0;
-      html += `<div class="prod-card"><div class="prod-img">${p.icon}</div><div class="prod-body"><h4>${p.name}</h4><div class="prod-unit">${p.unit}</div><div class="prod-foot"><span class="prod-price">${p.price} ج</span>
+      html += `<div class="prod-card"><div class="prod-img">${esc(p.icon)}</div><div class="prod-body"><h4>${esc(p.name)}</h4><div class="prod-unit">${esc(p.unit)}</div><div class="prod-foot"><span class="prod-price">${p.price} ج</span>
         ${p.available ? qty>0
           ? `<div class="qty-ctrl"><button class="qty-btn" onclick="chgQty('${p.id}',-1)">−</button><span class="qty-num" id="qty-${p.id}">${qty}</span><button class="qty-btn" onclick="chgQty('${p.id}',1)">+</button></div>`
           : `<button class="prod-add" onclick="addCart('${p.id}')">+</button>`
@@ -178,8 +197,8 @@ function doSearch(val) {
   if (!matches.length) { res.innerHTML='<div class="empty-state" style="padding:16px"><p>لا توجد نتائج</p></div>'; return; }
   res.innerHTML = matches.slice(0,8).map(p =>
     `<div class="res-item" onclick="showScreen('screen-store');renderProds('all')">
-      <div class="res-ic">${p.icon}</div>
-      <div class="res-info"><strong>${p.name}</strong><small>${p.unit||''} • ${p.storeName}</small></div>
+      <div class="res-ic">${esc(p.icon)}</div>
+      <div class="res-info"><strong>${esc(p.name)}</strong><small>${esc(p.unit)} • ${esc(p.storeName)}</small></div>
       <span class="res-price">${p.price} ج</span>
     </div>`
   ).join('');
@@ -258,7 +277,7 @@ function addNotif(title, body, type='gn') {
   const n = document.getElementById('notif-c');
   const count = parseInt(n.textContent)||0;
   n.textContent = count+1;
-  list.insertAdjacentHTML('afterbegin', `<div class="ni"><div class="ni-dot ${type}"></div><div class="ni-info"><p>${title}</p><small>${body}</small></div></div>`);
+  list.insertAdjacentHTML('afterbegin', `<div class="ni"><div class="ni-dot ${esc(type)}"></div><div class="ni-info"><p>${esc(title)}</p><small>${esc(body)}</small></div></div>`);
 }
 
 let notifListenerStarted = false;
@@ -314,7 +333,7 @@ function loadOrders() {
             }).join('')}
           </div>
           <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);font-size:12px">
-            <span style="color:var(--mu)">🏪 ${o.storeName||'--'}</span>
+            <span style="color:var(--mu)">🏪 ${esc(o.storeName)||'--'}</span>
             <span style="font-size:14px;font-weight:900;color:var(--p)">${o.total||0} ج</span>
           </div>
         </div>`;
@@ -341,7 +360,7 @@ function openTrack(ordId) {
     if (!snap.exists()) return;
     const o = {...snap.data(), id:snap.id};
     window._currentTrackOrd = o;
-    document.getElementById('track-driver').textContent = o.driverName || 'بانتظار المندوب...';
+    document.getElementById('track-driver').textContent = o.driverName || 'بانتظار المندوب...'; // textContent آمنة أصلاً ومش محتاجة esc()
     document.getElementById('track-eta').textContent = '15-25 دقيقة';
     document.getElementById('track-total').textContent = (o.total||0) + ' ج';
     // Timeline
@@ -637,6 +656,27 @@ function startGPS() {
   }, ()=>{}, {enableHighAccuracy:true, maximumAge:10000, timeout:15000});
 }
 
+// ===== SECURE CLOUDINARY UPLOAD =====
+// بدل ما نستخدم upload_preset مفتوح (أي حد يقدر يرفع بيه من برة التطبيق)،
+// بنجيب توقيع (signature) صالح لمدة دقايق من الـ Worker قبل كل رفعة، والتوقيع ده مربوط
+// بالتوقيت فبيبقى صالح لفترة قصيرة بس، فمينفعش حد يستخدمه غير من جوه التطبيق وقت الرفع.
+const CLOUDINARY_SIGN_URL = 'https://manayef-cloudinary-sign.mohamedselim3121998.workers.dev';
+async function secureCloudinaryUpload(file) {
+  const signRes = await fetch(CLOUDINARY_SIGN_URL);
+  if (!signRes.ok) throw new Error('sign failed');
+  const { timestamp, signature, apiKey, cloudName, folder } = await signRes.json();
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('api_key', apiKey);
+  fd.append('timestamp', timestamp);
+  fd.append('signature', signature);
+  fd.append('folder', folder);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method:'POST', body:fd });
+  const result = await res.json();
+  if (!result.secure_url) throw new Error('upload failed');
+  return result.secure_url;
+}
+
 // ===== HUBSPOT SYNC =====
 function syncToHubSpot(data) {
   fetch('https://manayef-hubspot-bridge.mohamedselim3121998.workers.dev', {
@@ -678,7 +718,7 @@ function listenNewOrders() {
     if (!snap.empty && window.onlineStatus) {
       const ord = snap.docs[0]; const o = ord.data();
       document.getElementById('new-ord-banner').style.display='flex';
-      document.getElementById('new-ord-txt').textContent = `${o.storeName||'متجر'} → ${o.customerName||'عميل'}\nالأجر: ${o.driverFee||0} ج`;
+      document.getElementById('new-ord-txt').textContent = `${o.storeName||'متجر'} → ${o.customerName||'عميل'}\nالأجر: ${o.driverFee||0} ج`; // textContent آمنة
       window._pendingOrdId = ord.id;
       window._pendingOrdTotal = o.total||0;
       window._pendingOrdFee = o.driverFee||0;
@@ -705,7 +745,7 @@ function loadDriverOrders() {
       if ((now-dt)/(1000*60*60*24)<=7) { wOrd++; wEarn+=o.driverFee||0; }
       html += `<div class="ord-card">
         <div class="ord-top"><span class="ord-id">#${d.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'جديد'}</span></div>
-        <div class="ord-route"><div class="ord-pt"><div class="ol">الاستلام</div><div class="ov">${o.storeName||'--'}</div></div><span class="ord-arr">←</span><div class="ord-pt"><div class="ol">التوصيل</div><div class="ov">${o.customerName||'العميل'}</div></div></div>
+        <div class="ord-route"><div class="ord-pt"><div class="ol">الاستلام</div><div class="ov">${esc(o.storeName)||'--'}</div></div><span class="ord-arr">←</span><div class="ord-pt"><div class="ol">التوصيل</div><div class="ov">${esc(o.customerName)||'العميل'}</div></div></div>
         <div class="ord-foot"><div class="ord-earn">${o.driverFee||0} ج <small>أجر التوصيل</small></div>
           <div style="display:flex;gap:5px">
             ${o.status==='new'||o.status==='accepted'?`<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','preparing')">بدأت التحضير</button>`:''}
@@ -795,8 +835,8 @@ function loadMerchantOrders() {
       if(dt.toDateString()===today){tOrd++;tRev+=o.total||0;}
       html+=`<div class="merch-ord-card">
         <div class="merch-ord-top"><span style="font-size:11px;font-weight:700;color:var(--mu)">#${d.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'جديد'}</span></div>
-        <div style="font-size:12px;color:var(--mu)">👤 ${o.customerName||'عميل'} • ${o.total||0} ج</div>
-        <div style="font-size:11px;margin-top:4px">${(o.items||[]).map(i=>`${i.name} x${i.qty}`).join('، ')}</div>
+        <div style="font-size:12px;color:var(--mu)">👤 ${esc(o.customerName)||'عميل'} • ${o.total||0} ج</div>
+        <div style="font-size:11px;margin-top:4px">${(o.items||[]).map(i=>`${esc(i.name)} x${i.qty}`).join('، ')}</div>
         <div class="merch-ord-acts">
           ${o.status==='new'?`<button class="mo-btn mo-acc" onclick="updOrdStatus2('${d.id}','accepted')">✅ قبول</button><button class="mo-btn mo-rej" onclick="updOrdStatus2('${d.id}','cancelled')">❌ رفض</button>`:''}
           ${o.status==='accepted'?`<button class="mo-btn mo-ready" onclick="updOrdStatus2('${d.id}','preparing')">👨‍🍳 بدأت التحضير</button>`:''}
@@ -826,7 +866,7 @@ function loadMerchantProds() {
       const p={...d.data(),id:d.id};
       html+=`<div style="background:#fff;border-radius:var(--r);padding:12px;margin-bottom:8px;box-shadow:var(--sh);border:1px solid var(--border);display:flex;gap:10px;align-items:center">
         <div style="width:48px;height:48px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${p.icon||'📦'}</div>
-        <div style="flex:1"><strong style="font-size:13px;font-weight:800;display:block">${p.name}</strong><small style="color:var(--mu);font-size:11px">${p.unit||''}</small>
+        <div style="flex:1"><strong style="font-size:13px;font-weight:800;display:block">${esc(p.name)}</strong><small style="color:var(--mu);font-size:11px">${esc(p.unit)}</small>
           <div style="font-size:14px;font-weight:900;color:var(--p);margin-top:3px">${p.price} ج</div>
           <div style="display:flex;gap:5px;margin-top:6px">
             <button class="mb2 mb-view" onclick="showToast('تعديل المنتج قريباً ✏️')">✏️ تعديل</button>
@@ -877,15 +917,10 @@ async function simUp(id,label){
     }
     box.innerHTML = `<div class="u-ic">⏳</div><p style="font-size:12px">جارٍ الرفع...</p>`;
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('upload_preset', CLOUDINARY_PRESET);
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method:'POST', body:fd });
-      const result = await res.json();
-      if (!result.secure_url) throw new Error('upload failed');
-      window.uploadedDocs[id] = result.secure_url;
+      const url = await secureCloudinaryUpload(file);
+      window.uploadedDocs[id] = url;
       box.classList.add('done');
-      box.innerHTML = `<div class="u-ic">✅</div><p style="color:var(--ok);font-weight:800;font-size:12px">${label}</p>`;
+      box.innerHTML = `<div class="u-ic">✅</div><p style="color:var(--ok);font-weight:800;font-size:12px">${esc(label)}</p>`;
     } catch(e) {
       box.innerHTML = `<div class="u-ic">📷</div><p style="font-size:12px;color:#E11">فشل الرفع، اضغط للمحاولة تاني</p>`;
       showToast('فشل رفع الصورة، حاول تاني','err');
@@ -931,7 +966,7 @@ async function loadAdminData() {
     recs.slice(0,5).forEach(o=>{
       html+=`<div style="padding:9px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700">#${o.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'--'}</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mu)">🏪 ${o.storeName||'--'} • ${o.customerName||'عميل'}</span><span><strong>${o.total||0} ج</strong></span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mu)">🏪 ${esc(o.storeName)||'--'} • ${esc(o.customerName)||'عميل'}</span><span><strong>${o.total||0} ج</strong></span></div>
         <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">
           ${STEPS.filter(s=>s!==o.status).map(s=>`<button class="mb2 mb-view" onclick="admUpdOrd('${o.id}','${s}')" style="font-size:9px">${SL[s]}</button>`).join('')}
         </div>
@@ -940,7 +975,7 @@ async function loadAdminData() {
     document.getElementById('adm-recent-ords').innerHTML=html||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا توجد طلبات</p></div>';
     document.getElementById('adm-all-ords').innerHTML=recs.length?recs.map(o=>`<div style="padding:9px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700">#${o.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'--'}</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mu)">🏪 ${o.storeName||'--'}</span><span>${o.total||0} ج <span style="color:var(--p)">(${o.commission||0} ج)</span></span></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mu)">🏪 ${esc(o.storeName)||'--'}</span><span>${o.total||0} ج <span style="color:var(--p)">(${o.commission||0} ج)</span></span></div>
     </div>`).join(''):'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا توجد طلبات</p></div>';
   });
 
@@ -952,21 +987,22 @@ async function loadAdminData() {
     document.getElementById('adm-users-c').textContent=cust;
     document.getElementById('adm-drvs-c').textContent=drvs;
     let pd='';
-    pendDrvs.forEach(u=>{pd+=`<div class="drv-row2"><div class="drv-av2">👤</div><div class="drv-info2"><strong>${u.fullName||u.name||'--'}</strong><small>📱 ${u.phone||'--'}</small><br><span class="p-badge">⏳ بانتظار الموافقة</span></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick="openDrvModal('${u.id}')">تفاصيل</button></div></div>`;});
+    pendDrvs.forEach(u=>{pd+=`<div class="drv-row2"><div class="drv-av2">👤</div><div class="drv-info2"><strong>${esc(u.fullName||u.name)||'--'}</strong><small>📱 ${esc(u.phone)||'--'}</small><br><span class="p-badge">⏳ بانتظار الموافقة</span></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick="openDrvModal('${u.id}')">تفاصيل</button></div></div>`;});
     document.getElementById('adm-pend-drvs').innerHTML=pd||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد مناديب معلّقون</p></div>';
     const pendC=document.getElementById('adm-pend-c'); if(pendC) pendC.textContent=pendDrvs.length;
     const storesC=document.getElementById('adm-stores-c'); if(storesC) storesC.textContent=allStores.length;
     const pendStores=allStores.filter(m=>m.status==='pending').length;
     const notifC=document.getElementById('adm-notif-c'); if(notifC) notifC.textContent=pendDrvs.length+pendStores;
     let dl='';
-    allDrvs.forEach(u=>{dl+=`<div class="drv-row2" data-st="${u.status||'active'}"><div class="drv-av2">👤</div><div class="drv-info2"><strong>${u.fullName||u.name||'--'}</strong><small>📱 ${u.phone||'--'} | ${u.status==='pending'?'⏳ انتظار':'✅ نشط'}</small></div><div class="drv-row2-acts">${u.status==='pending'?`<button class="mb2 mb-acc" onclick="admAccDrv('${u.id}')">قبول</button><button class="mb2 mb-rej" onclick="admRejDrv('${u.id}')">رفض</button>`:`<button class="mb2 mb-view" onclick="openDrvModal('${u.id}')">ملفه</button>`}</div></div>`;});
+    allDrvs.forEach(u=>{dl+=`<div class="drv-row2" data-st="${u.status||'active'}"><div class="drv-av2">👤</div><div class="drv-info2"><strong>${esc(u.fullName||u.name)||'--'}</strong><small>📱 ${esc(u.phone)||'--'} | ${u.status==='pending'?'⏳ انتظار':'✅ نشط'}</small></div><div class="drv-row2-acts">${u.status==='pending'?`<button class="mb2 mb-acc" onclick="admAccDrv('${u.id}')">قبول</button><button class="mb2 mb-rej" onclick="admRejDrv('${u.id}')">رفض</button>`:`<button class="mb2 mb-view" onclick="openDrvModal('${u.id}')">ملفه</button>`}</div></div>`;});
     document.getElementById('adm-drvs-list').innerHTML=dl||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد مناديب</p></div>';
     let ul='';
-    snap.forEach(d=>{const u=d.data();if(u.role!=='customer')return;ul+=`<div class="drv-row2"><div class="drv-av2" style="font-size:16px">👤</div><div class="drv-info2"><strong>${u.name||'--'}</strong><small>📱 ${u.phone||u.email||'--'} | ${u.points||0} نقطة</small></div></div>`;});
+    snap.forEach(d=>{const u=d.data();if(u.role!=='customer')return;ul+=`<div class="drv-row2"><div class="drv-av2" style="font-size:16px">👤</div><div class="drv-info2"><strong>${esc(u.name)||'--'}</strong><small>📱 ${esc(u.phone||u.email)||'--'} | ${u.points||0} نقطة</small></div></div>`;});
     document.getElementById('adm-users-list').innerHTML=ul||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد عملاء</p></div>';
     let sh='';
     allStores.forEach(m=>{
-      sh+=`<div class="drv-row2"><div class="drv-av2" style="background:#EFF6FF">🏬</div><div class="drv-info2"><strong>${m.storeName||m.name||'--'}</strong><small>📱 ${m.storePhone||m.phone||'--'}${m.status==='pending'?'<br><span class="p-badge">⏳ بانتظار الموافقة</span>':m.status==='active'?' | ✅ نشط':' | ❌ مرفوض'}</small></div><div class="drv-row2-acts">${m.status==='pending'?`<button class="mb2 mb-acc" onclick="admAccStore('${m.id}')">قبول</button><button class="mb2 mb-rej" onclick="admRejStore('${m.id}')">رفض</button>`:`<button class="mb2 mb-view" onclick="showToast('${m.storeName||'المتجر'}')">إدارة</button>`}</div></div>`;
+      const mName = m.storeName || m.name || '--';
+      sh+=`<div class="drv-row2"><div class="drv-av2" style="background:#EFF6FF">🏬</div><div class="drv-info2"><strong>${esc(mName)}</strong><small>📱 ${esc(m.storePhone||m.phone)||'--'}${m.status==='pending'?'<br><span class="p-badge">⏳ بانتظار الموافقة</span>':m.status==='active'?' | ✅ نشط':' | ❌ مرفوض'}</small></div><div class="drv-row2-acts">${m.status==='pending'?`<button class="mb2 mb-acc" onclick="admAccStore('${m.id}')">قبول</button><button class="mb2 mb-rej" onclick="admRejStore('${m.id}')">رفض</button>`:`<button class="mb2 mb-view" onclick="showToast('${escJs(mName||'المتجر')}')">إدارة</button>`}</div></div>`;
     });
     document.getElementById('adm-stores-list').innerHTML=sh||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد تجار</p></div>';
     if (window.admMap) initAdminMap(allDrvs);
@@ -982,9 +1018,9 @@ async function openDrvModal(uid){
   try{
     const d=await getDoc(doc(db,'users',uid));const u=d.data()||{};
     document.getElementById('drv-modal-content').innerHTML=`
-      <div class="info-row"><span class="il">الاسم</span><span class="iv">${u.fullName||u.name||'--'}</span></div>
-      <div class="info-row"><span class="il">الهاتف</span><span class="iv">${u.phone||'--'}</span></div>
-      <div class="info-row"><span class="il">العنوان</span><span class="iv">${u.address||'--'}</span></div>
+      <div class="info-row"><span class="il">الاسم</span><span class="iv">${esc(u.fullName||u.name)||'--'}</span></div>
+      <div class="info-row"><span class="il">الهاتف</span><span class="iv">${esc(u.phone)||'--'}</span></div>
+      <div class="info-row"><span class="il">العنوان</span><span class="iv">${esc(u.address)||'--'}</span></div>
       <div class="info-row"><span class="il">الحالة</span><span class="iv">${u.status==='pending'?'⏳ بانتظار الموافقة':u.status==='active'?'✅ نشط':'❌ مرفوض'}</span></div>
       <div style="margin:10px 0"><div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px">📄 المستندات:</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -1011,7 +1047,7 @@ function renderAdminCats(items) {
   const list = document.getElementById('adm-cats-list');
   if (!list) return;
   if (!items.length) { list.innerHTML = '<div class="empty-state" style="padding:16px"><p style="font-size:12px">لا توجد أقسام بعد</p></div>'; return; }
-  list.innerHTML = items.map(c => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6">${c.icon||'🗂️'}</div><div class="drv-info2"><strong>${c.label||''}</strong><small>ترتيب: ${c.order??0}</small></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick="editCat('${c.id}','${(c.label||'').replace(/'/g,"\\'")}','${c.icon||''}',${c.order??0})">تعديل</button><button class="mb2 mb-rej" onclick="delCat('${c.id}')">حذف</button></div></div>`).join('');
+  list.innerHTML = items.map(c => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6">${esc(c.icon)||'🗂️'}</div><div class="drv-info2"><strong>${esc(c.label)}</strong><small>ترتيب: ${c.order??0}</small></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick="editCat('${c.id}','${escJs(c.label)}','${escJs(c.icon)}',${c.order??0})">تعديل</button><button class="mb2 mb-rej" onclick="delCat('${c.id}')">حذف</button></div></div>`).join('');
 }
 function openAddCat() {
   document.getElementById('cat-modal-title').textContent = '➕ إضافة قسم';
@@ -1052,7 +1088,7 @@ function renderAdminBanners(items) {
   const list = document.getElementById('adm-banners-list');
   if (!list) return;
   if (!items.length) { list.innerHTML = '<div class="empty-state" style="padding:16px"><p style="font-size:12px">لا توجد بانرات بعد</p></div>'; return; }
-  list.innerHTML = items.map(b => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6;background-image:url('${b.imageUrl||''}');background-size:cover">${b.imageUrl?'':'🖼️'}</div><div class="drv-info2"><strong>${b.title||''}</strong><small>ترتيب: ${b.order??0}</small></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick='editBanner(${JSON.stringify(b)})'>تعديل</button><button class="mb2 mb-rej" onclick="delBanner('${b.id}')">حذف</button></div></div>`).join('');
+  list.innerHTML = items.map(b => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6;background-image:url('${esc(b.imageUrl)}');background-size:cover">${b.imageUrl?'':'🖼️'}</div><div class="drv-info2"><strong>${esc(b.title)}</strong><small>ترتيب: ${b.order??0}</small></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick='editBanner(${JSON.stringify(b).replace(/</g,"\\u003c")})'>تعديل</button><button class="mb2 mb-rej" onclick="delBanner('${b.id}')">حذف</button></div></div>`).join('');
 }
 async function uploadBannerImg() {
   const box = document.getElementById('ab-img-box');
@@ -1063,12 +1099,9 @@ async function uploadBannerImg() {
     if (file.size > 5*1024*1024) { showToast('حجم الصورة كبير جدًا (الحد الأقصى 5 ميجا)','err'); return; }
     box.innerHTML = `<div class="u-ic">⏳</div><p style="font-size:12px">جارٍ الرفع...</p>`;
     try {
-      const fd = new FormData(); fd.append('file', file); fd.append('upload_preset', CLOUDINARY_PRESET);
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method:'POST', body:fd });
-      const result = await res.json();
-      if (!result.secure_url) throw new Error('upload failed');
-      document.getElementById('ab-imgurl').value = result.secure_url;
-      box.style.backgroundImage = `url('${result.secure_url}')`;
+      const url = await secureCloudinaryUpload(file);
+      document.getElementById('ab-imgurl').value = url;
+      box.style.backgroundImage = `url('${url}')`;
       box.style.backgroundSize = 'cover';
       box.innerHTML = `<div class="u-ic">✅</div><p style="font-size:12px;color:var(--ok)">تم رفع الصورة</p>`;
     } catch(e) {
@@ -1128,7 +1161,7 @@ function renderAdminCoupons(items) {
   const list = document.getElementById('adm-coupons-list');
   if (!list) return;
   if (!items.length) { list.innerHTML = '<div class="empty-state" style="padding:16px"><p style="font-size:12px">لا توجد قسائم بعد</p></div>'; return; }
-  list.innerHTML = items.map(c => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6">${c.icon||'🎟️'}</div><div class="drv-info2"><strong>${c.title||''} — ${c.code||''}</strong><small>${c.badge||''} | ترتيب: ${c.order??0}</small></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick='editCoupon(${JSON.stringify(c)})'>تعديل</button><button class="mb2 mb-rej" onclick="delCoupon('${c.id}')">حذف</button></div></div>`).join('');
+  list.innerHTML = items.map(c => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6">${esc(c.icon)||'🎟️'}</div><div class="drv-info2"><strong>${esc(c.title)} — ${esc(c.code)}</strong><small>${esc(c.badge)} | ترتيب: ${c.order??0}</small></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick='editCoupon(${JSON.stringify(c).replace(/</g,"\\u003c")})'>تعديل</button><button class="mb2 mb-rej" onclick="delCoupon('${c.id}')">حذف</button></div></div>`).join('');
 }
 function openAddCoupon() {
   document.getElementById('coupon-modal-title').textContent = '➕ إضافة قسيمة';
