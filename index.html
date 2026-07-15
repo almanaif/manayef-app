@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="css/styles.css">
   <link rel="manifest" id="manifest-link">
   <meta name="theme-color" content="#FF6B00">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -17,8 +17,19 @@
   <div class="ld-ic">🛵</div>
   <div class="ld-name">منايف <span>GO</span></div>
   <div class="ld-bar"><div class="ld-fill"></div></div>
-  <div class="ld-sub">جاري التحميل...</div>
+  <div class="ld-sub" id="ld-sub">جاري التحميل...</div>
 </div>
+
+<!-- حارس شبكة: لو التطبيق فشل يحمّل خلال 8 ثواني (نت ضعيف/مقطوع)، اظهر رسالة واضحة بدل شاشة تحميل لا نهائية -->
+<script>
+  setTimeout(function(){
+    var ld = document.getElementById('loading');
+    if (ld && !ld.classList.contains('hide')) {
+      var sub = document.getElementById('ld-sub');
+      if (sub) sub.innerHTML = '⚠️ تعذر الاتصال بالخدمة<br><small style="opacity:.7;font-size:11px">تأكد من اتصال الإنترنت وأعد المحاولة</small><br><button onclick="location.reload()" style="margin-top:14px;padding:10px 24px;background:#FF6B00;color:#fff;border:none;border-radius:10px;font-family:Cairo,sans-serif;font-weight:700;cursor:pointer;font-size:13px">إعادة المحاولة</button>';
+    }
+  }, 8000);
+</script>
 
 <!-- ===== TOAST ===== -->
 <div id="toast" class="toast"></div>
