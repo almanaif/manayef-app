@@ -350,10 +350,7 @@ function openTrack(ordId) {
     STEPS.forEach((s,i) => {
       const done = i < si;
       const active = i === si;
-      tHtml += `<div class="tt-item"><div class="tt-left"><div class="tt-dot ${done?'done':''} ${active?'active':''}">${STEP_ICONS[i]}</div>${i<STEPS.length-1?'<div class="tt-line '+((done?'done':'')+'"></div>':''}</div>
-      <div class="tt-right"><strong>${STEP_LABELS[i]}</strong><small>${SL[s]}</small>
-      ${active?'<span class="tt-time">الحالة الحالية</span>':''}
-      ${done?'<span class="tt-time" style="color:var(--ok)">✓ مكتمل</span>':''}</div></div>`;
+      tHtml += `<div class="tt-item"><div class="tt-left"><div class="tt-dot ${done ? 'done' : ''} ${active ? 'active' : ''}">${STEP_ICONS[i]}</div>${i < STEPS.length - 1 ? `<div class="tt-line ${done ? 'done' : ''}"></div>` : ''}</div><div class="tt-right"><strong>${STEP_LABELS[i]}</strong><small>${SL[s]}</small>${active ? '<span class="tt-time">الحالة الحالية</span>' : ''}${done ? '<span class="tt-time" style="color:var(--ok)">✓ مكتمل</span>' : ''}</div></div>`;
     });
     document.getElementById('track-timeline').innerHTML = tHtml;
     // Rating section
