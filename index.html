@@ -22,11 +22,21 @@
 
 <!-- حارس شبكة: لو التطبيق فشل يحمّل خلال 8 ثواني (نت ضعيف/مقطوع)، اظهر رسالة واضحة بدل شاشة تحميل لا نهائية -->
 <script>
+  // ===== DEBUG: يظهر أي خطأ JS فعلي على الشاشة (مؤقت لحل مشكلة التحميل) =====
+  window.__lastErr = null;
+  window.addEventListener('error', function(e){
+    window.__lastErr = (e.message || 'خطأ غير معروف') + ' — ' + (e.filename ? e.filename.split('/').pop() : '') + ':' + (e.lineno || '');
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    window.__lastErr = 'Promise Error: ' + (e.reason && (e.reason.message || e.reason.code || e.reason) || 'unknown');
+  });
+
   setTimeout(function(){
     var ld = document.getElementById('loading');
     if (ld && !ld.classList.contains('hide')) {
       var sub = document.getElementById('ld-sub');
-      if (sub) sub.innerHTML = '⚠️ تعذر الاتصال بالخدمة<br><small style="opacity:.7;font-size:11px">تأكد من اتصال الإنترنت وأعد المحاولة</small><br><button onclick="location.reload()" style="margin-top:14px;padding:10px 24px;background:#FF6B00;color:#fff;border:none;border-radius:10px;font-family:Cairo,sans-serif;font-weight:700;cursor:pointer;font-size:13px">إعادة المحاولة</button>';
+      var errLine = window.__lastErr ? ('<br><small style="opacity:.9;font-size:11px;color:#ffdd88;direction:ltr;display:inline-block;word-break:break-all">' + window.__lastErr + '</small>') : '';
+      if (sub) sub.innerHTML = '⚠️ تعذر الاتصال بالخدمة<br><small style="opacity:.7;font-size:11px">تأكد من اتصال الإنترنت وأعد المحاولة</small>' + errLine + '<br><button onclick="location.reload()" style="margin-top:14px;padding:10px 24px;background:#FF6B00;color:#fff;border:none;border-radius:10px;font-family:Cairo,sans-serif;font-weight:700;cursor:pointer;font-size:13px">إعادة المحاولة</button>';
     }
   }, 8000);
 </script>
