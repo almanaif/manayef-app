@@ -23,6 +23,9 @@
 <!-- حارس شبكة: لو التطبيق فشل يحمّل خلال 8 ثواني (نت ضعيف/مقطوع)، اظهر رسالة واضحة بدل شاشة تحميل لا نهائية -->
 <script>
   // ===== DEBUG: يظهر أي خطأ JS فعلي على الشاشة (مؤقت لحل مشكلة التحميل) =====
+  // جديد: تفاصيل الخطأ (اسم الملف/رقم السطر) بقت تتعرض بس لو DEBUG_ERRORS=true.
+  // سيبوها false في الإنتاج عشان مستخدم حقيقي ميشوفش تفاصيل تقنية لو حصل خطأ.
+  window.DEBUG_ERRORS = false;
   window.__lastErr = null;
   window.addEventListener('error', function(e){
     window.__lastErr = (e.message || 'خطأ غير معروف') + ' — ' + (e.filename ? e.filename.split('/').pop() : '') + ':' + (e.lineno || '');
@@ -35,7 +38,7 @@
     var ld = document.getElementById('loading');
     if (ld && !ld.classList.contains('hide')) {
       var sub = document.getElementById('ld-sub');
-      var errLine = window.__lastErr ? ('<br><small style="opacity:.9;font-size:11px;color:#ffdd88;direction:ltr;display:inline-block;word-break:break-all">' + window.__lastErr + '</small>') : '';
+      var errLine = (window.DEBUG_ERRORS && window.__lastErr) ? ('<br><small style="opacity:.9;font-size:11px;color:#ffdd88;direction:ltr;display:inline-block;word-break:break-all">' + window.__lastErr + '</small>') : '';
       if (sub) sub.innerHTML = '⚠️ تعذر الاتصال بالخدمة<br><small style="opacity:.7;font-size:11px">تأكد من اتصال الإنترنت وأعد المحاولة</small>' + errLine + '<br><button onclick="location.reload()" style="margin-top:14px;padding:10px 24px;background:#FF6B00;color:#fff;border:none;border-radius:10px;font-family:Cairo,sans-serif;font-weight:700;cursor:pointer;font-size:13px">إعادة المحاولة</button>';
     }
   }, 8000);
@@ -104,7 +107,7 @@
         <div class="inp-g"><label>رقم التليفون</label><input type="tel" id="rphone" class="inp" placeholder="01xxxxxxxxx"></div>
         <div class="inp-g"><label>العنوان</label><input type="text" id="raddress" class="inp" placeholder="شارع الجمهورية - المنايف"></div>
         <div class="inp-g"><label>البريد الإلكتروني</label><input type="email" id="rmail" class="inp" placeholder="email@example.com"></div>
-        <div class="inp-g"><label>كلمة المرور</label><input type="password" id="rpass" class="inp" placeholder="6 أحرف على الأقل"></div>
+        <div class="inp-g"><label>كلمة المرور</label><input type="password" id="rpass" class="inp" minlength="6" placeholder="6 أحرف على الأقل"></div>
       </div>
       <!-- MERCHANT -->
       <div id="reg-merchant-fields" style="display:none">
@@ -114,7 +117,7 @@
         <div class="inp-g"><label>هاتف صاحب المتجر</label><input type="tel" id="r-owner-phone" class="inp" placeholder="01xxxxxxxxx"></div>
         <div class="inp-g"><label>عنوان المتجر</label><input type="text" id="r-store-addr" class="inp" placeholder="شارع الجمهورية"></div>
         <div class="inp-g"><label>البريد الإلكتروني</label><input type="email" id="r-store-mail" class="inp" placeholder="email@example.com"></div>
-        <div class="inp-g"><label>كلمة المرور</label><input type="password" id="r-store-pass" class="inp" placeholder="6 أحرف على الأقل"></div>
+        <div class="inp-g"><label>كلمة المرور</label><input type="password" id="r-store-pass" class="inp" minlength="6" placeholder="6 أحرف على الأقل"></div>
       </div>
       <!-- DRIVER -->
       <div id="reg-driver-fields" style="display:none">
@@ -122,7 +125,7 @@
         <div class="inp-g"><label>رقم التليفون</label><input type="tel" id="r-drv-phone" class="inp" placeholder="01xxxxxxxxx"></div>
         <div class="inp-g"><label>العنوان</label><input type="text" id="r-drv-addr" class="inp" placeholder="شارع الجمهورية"></div>
         <div class="inp-g"><label>البريد الإلكتروني</label><input type="email" id="r-drv-mail" class="inp" placeholder="email@example.com"></div>
-        <div class="inp-g"><label>كلمة المرور</label><input type="password" id="r-drv-pass" class="inp" placeholder="6 أحرف على الأقل"></div>
+        <div class="inp-g"><label>كلمة المرور</label><input type="password" id="r-drv-pass" class="inp" minlength="6" placeholder="6 أحرف على الأقل"></div>
       </div>
       <button class="btn-p" id="reg-btn" onclick="doRegister()"><span class="spinner" id="rsp"></span> إنشاء الحساب</button>
     </div>
