@@ -236,15 +236,97 @@
 
 <!-- ===== DRIVER REGISTER ===== -->
 <div id="screen-driver-register" class="screen">
-  <div class="dreg-hdr"><h1>تسجيل كمناديب توصيل</h1><p>ابدأ كسب معانا! سجل بياناتك وابدأ توصيل الطلبات</p><div class="dreg-steps"><div class="ds done"></div><div class="ds active"></div><div class="ds"></div></div></div>
-  <div class="dreg-body" id="dreg-form">
-    <div class="dreg-sec"><h3>البيانات الشخصية</h3><div class="inp-g"><label>الاسم الكامل</label><input type="text" id="d-name" class="inp" placeholder="محمد أحمد علي"></div><div class="inp-g"><label>رقم التليفون</label><input type="tel" id="d-phone" class="inp" placeholder="01xxxxxxxxx"></div><div class="inp-g"><label>العنوان</label><input type="text" id="d-addr" class="inp" placeholder="المنايف، أبو صوير - الإسماعيلية"></div></div>
-    <div class="dreg-sec"><h3>📄 المستندات المطلوبة</h3><div class="upload-box" onclick="simUp('d-id1','صورة رقم قومي أمامي')" id="d-id1"><div class="u-ic">🪪</div><p>صورة الرقم القومي من الأمام</p></div><div class="upload-box" onclick="simUp('d-id2','صورة رقم قومي خلفي')" id="d-id2"><div class="u-ic">🪪</div><p>صورة الرقم القومي من الخلف</p></div><div class="upload-box" onclick="simUp('d-photo','صورة شخصية')" id="d-photo"><div class="u-ic">📷</div><p>صورة شخصية حديثة</p></div><div class="upload-box" onclick="simUp('d-license','رخصة موتوسيكل')" id="d-license"><div class="u-ic">🏍️</div><p>رخصة قيادة الموتوسيكل</p></div></div>
-    <div class="dreg-sec"><h3>بنود وشروط التوصيل</h3><div class="terms-box"><div class="term-row"><span class="term-ck">📋</span><span class="term-txt">التزام بالمواعيد والتوصيل خلال 30 دقيقة</span></div><div class="term-row"><span class="term-ck">💰</span><span class="term-txt">رسوم التوصيل 15% من قيمة الطلب (يتحمل العميل)</span></div><div class="term-row"><span class="term-ck">🛡️</span><span class="term-txt">المنصة غير مسؤولة عن البضائع بعد التسليم</span></div></div><div class="agree-row" onclick="toggleAgree()"><div class="agree-box" id="agree-box"></div><span>أوافق على البنود والشروط</span></div></div>
-    <button class="btn-p" id="dreg-btn" onclick="submitDrvReg()" style="margin-bottom:24px"><span class="spinner" id="dreg-sp"></span> إرسال طلب الانضمام</button>
+  <div class="dreg-hdr">
+    <button class="dreg-back" onclick="dregBack()">→</button>
+    <h1>تسجيل كمناديب توصيل</h1><p>ابدأ كسب معانا! سجل بياناتك وابدأ توصيل الطلبات</p>
+    <div class="dreg-steps"><div class="ds" id="dds-1"></div><div class="ds" id="dds-2"></div><div class="ds" id="dds-3"></div><div class="ds" id="dds-4"></div></div>
+    <div class="dreg-steps-lbl"><span>البيانات</span><span>المستندات</span><span>المراجعة</span><span>تم ✓</span></div>
+    <div class="dreg-pct" id="dreg-pct">اكتمال التسجيل: 0%</div>
   </div>
-  <div class="pending-wrap" id="dreg-pending" style="display:none"><div class="pi">⏳</div><h2>طلبك قيد المراجعة</h2><p>سيراجع فريقنا طلبك<br>هيتم التواصل معاك خلال 24 ساعة<br>📱 هيوصلك إشعار لما الحساب يِتقبل</p><button class="btn-p" onclick="showScreen('screen-entry')" style="margin-top:20px">رجوع للرئيسية</button></div>
+  <div class="dreg-body" id="dreg-form">
+
+    <!-- STEP 1: البيانات الشخصية -->
+    <div class="dreg-step-pane active" id="dreg-step-1">
+      <div class="dreg-sec"><h3>البيانات الشخصية</h3>
+        <div class="inp-g"><label>الاسم الكامل</label><input type="text" id="d-name" class="inp" placeholder="محمد أحمد علي" oninput="dregSaveDraft()"><div class="field-err" id="err-d-name"></div></div>
+        <div class="inp-g"><label>رقم التليفون</label><input type="tel" id="d-phone" class="inp" placeholder="01xxxxxxxxx" oninput="dregSaveDraft()"><div class="field-err" id="err-d-phone"></div></div>
+        <div class="inp-g"><label>تاريخ الميلاد</label><input type="date" id="d-dob" class="inp" oninput="dregSaveDraft()"><div class="field-err" id="err-d-dob"></div></div>
+        <div class="inp-g"><label>الرقم القومي</label><input type="text" inputmode="numeric" maxlength="14" id="d-nid" class="inp" placeholder="14 رقم" oninput="dregSaveDraft()"><div class="field-err" id="err-d-nid"></div></div>
+        <div class="inp-g"><label>رقم طوارئ (شخص تاني للتواصل وقت الحاجة)</label><input type="tel" id="d-emerg" class="inp" placeholder="01xxxxxxxxx" oninput="dregSaveDraft()"><div class="field-err" id="err-d-emerg"></div></div>
+        <div class="inp-g"><label>العنوان</label><input type="text" id="d-addr" class="inp" placeholder="المنايف، أبو صوير - الإسماعيلية" oninput="dregSaveDraft()"><div class="field-err" id="err-d-addr"></div>
+          <button type="button" class="loc-btn" id="loc-btn" onclick="dregGetLocation()">📍 تحديد موقعي الحالي</button>
+          <div id="loc-map-wrap" style="display:none;height:150px;border-radius:12px;overflow:hidden;margin-bottom:6px"><div id="loc-map" style="height:100%"></div></div>
+        </div>
+      </div>
+      <div class="dreg-sec"><h3>بيانات المركبة</h3>
+        <div class="inp-g"><label>نوع المركبة</label><select id="d-vtype" class="sel" onchange="dregSaveDraft()"><option value="">اختر...</option><option value="motorcycle">موتوسيكل</option><option value="tuktuk">توك توك</option><option value="bicycle">عجلة</option><option value="car">عربية</option></select><div class="field-err" id="err-d-vtype"></div></div>
+        <div class="inp-g"><label>موديل المركبة</label><input type="text" id="d-vmodel" class="inp" placeholder="مثال: 2020" oninput="dregSaveDraft()"></div>
+        <div class="inp-g"><label>لون المركبة</label><input type="text" id="d-vcolor" class="inp" placeholder="مثال: أسود" oninput="dregSaveDraft()"></div>
+        <div class="inp-g"><label>رقم اللوحة</label><input type="text" id="d-plate" class="inp" placeholder="أ ب ج 1234" oninput="dregSaveDraft()"></div>
+        <div class="inp-g"><label>عندك خبرة قبل كده في التوصيل؟</label>
+          <div class="toggle-row"><div class="toggle-opt active" id="exp-yes" onclick="dregSetExp(true)">نعم</div><div class="toggle-opt" id="exp-no" onclick="dregSetExp(false)">لأ</div></div>
+        </div>
+      </div>
+      <div class="dreg-nav"><button class="btn-p dreg-nav-next" onclick="dregNext()">التالي</button></div>
+    </div>
+
+    <!-- STEP 2: المستندات -->
+    <div class="dreg-step-pane" id="dreg-step-2">
+      <div class="dreg-sec"><h3>📄 المستندات المطلوبة</h3>
+        <div id="d-id1-wrap"><div class="upload-box" onclick="uploadDoc('d-id1','صورة رقم قومي أمامي')" id="d-id1"><span class="doc-help" onclick="event.stopPropagation();showToast('لازم تكون الصورة واضحة وكل البيانات ظاهرة')">؟</span><div class="u-ic">🪪</div><p>صورة الرقم القومي من الأمام</p></div></div>
+        <div id="d-id2-wrap"><div class="upload-box" onclick="uploadDoc('d-id2','صورة رقم قومي خلفي')" id="d-id2"><span class="doc-help" onclick="event.stopPropagation();showToast('لازم تكون الصورة واضحة وكل البيانات ظاهرة')">؟</span><div class="u-ic">🪪</div><p>صورة الرقم القومي من الخلف</p></div></div>
+        <div id="d-photo-wrap"><div class="upload-box" onclick="uploadDoc('d-photo','صورة شخصية')" id="d-photo"><span class="doc-help" onclick="event.stopPropagation();showToast('صورة حديثة وواضحة للوجه')">؟</span><div class="u-ic">📷</div><p>صورة شخصية حديثة</p></div></div>
+        <div id="d-license-wrap"><div class="upload-box" onclick="uploadDoc('d-license','رخصة موتوسيكل')" id="d-license"><span class="doc-help" onclick="event.stopPropagation();showToast('رخصة القيادة سارية ووضحة')">؟</span><div class="u-ic">🏍️</div><p>رخصة قيادة المركبة</p></div></div>
+        <div class="field-err" id="err-docs" style="text-align:center;margin-top:6px"></div>
+      </div>
+      <div class="dreg-nav"><button class="btn-s" onclick="dregBack()">رجوع</button><button class="btn-p" onclick="dregNext()">التالي</button></div>
+    </div>
+
+    <!-- STEP 3: المراجعة والشروط -->
+    <div class="dreg-step-pane" id="dreg-step-3">
+      <div class="dreg-sec"><h3>راجع بياناتك</h3><div id="dreg-review"></div></div>
+      <div class="dreg-sec"><h3>بنود وشروط التوصيل</h3>
+        <div class="terms-box">
+          <div class="term-row"><span class="term-ck">📋</span><span class="term-txt">التزام بالمواعيد والتوصيل خلال 30 دقيقة</span></div>
+          <div class="term-row"><span class="term-ck">💰</span><span class="term-txt">رسوم التوصيل 15% من قيمة الطلب (يتحمل العميل)</span></div>
+          <div class="term-row"><span class="term-ck">🛡️</span><span class="term-txt">المنصة غير مسؤولة عن البضائع بعد التسليم</span></div>
+        </div>
+        <button type="button" class="btn-s" style="width:100%;margin-top:8px" onclick="openTermsModal()">📜 قراءة الشروط بالكامل</button>
+        <div class="agree-row" onclick="toggleAgree()"><div class="agree-box" id="agree-box"></div><span>أوافق على البنود والشروط</span></div>
+        <div class="field-err" id="err-agree"></div>
+      </div>
+      <div class="dreg-nav"><button class="btn-s" onclick="dregBack()">رجوع</button><button class="btn-p" id="dreg-btn" onclick="submitDrvReg()"><span class="spinner" id="dreg-sp"></span> إرسال طلب الانضمام</button></div>
+    </div>
+
+  </div>
+
+  <!-- STEP 4: نجاح الإرسال -->
+  <div class="success-wrap" id="dreg-pending" style="display:none">
+    <div class="si">✅</div><h2>تم استلام طلبك بنجاح</h2>
+    <p style="font-size:13px;color:var(--mu)">فريقنا هيراجع بياناتك ومستنداتك</p>
+    <div class="success-card">
+      <div class="sr"><span>رقم الطلب</span><span id="dreg-reqid">--</span></div>
+      <div class="sr"><span>الحالة</span><span style="color:var(--y)">⏳ قيد المراجعة</span></div>
+      <div class="sr"><span>متوسط وقت المراجعة</span><span>24-48 ساعة</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--mu)">📱 هيوصلك إشعار لما الحساب يِتقبل</p>
+    <button class="btn-p" onclick="showScreen('screen-entry')" style="margin-top:20px">العودة للرئيسية</button>
+  </div>
 </div>
+
+<!-- ===== TERMS MODAL ===== -->
+<div class="modal-ov" id="terms-modal">
+  <div class="modal-sheet">
+    <h3>البنود والشروط كاملة</h3>
+    <div class="mt-txt" id="terms-full-txt"></div>
+    <button class="btn-p" onclick="agreeTermsModal()">قرأت ووافقت</button>
+  </div>
+</div>
+
+<!-- ===== IMAGE ZOOM ===== -->
+<div class="zoom-ov" id="zoom-ov"><button class="zc" onclick="closeZoom()">✕</button><img id="zoom-img" src=""></div>
+
+
 
 <!-- ===== DRIVER APP ===== -->
 <div id="screen-driver" class="screen">
