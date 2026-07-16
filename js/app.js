@@ -1135,12 +1135,12 @@ function dregRenderDocPreview(id,label,url){
     <div class="doc-preview-acts">
       <button onclick="zoomDoc('${escJs(url)}')">🔍 تكبير</button>
       <button onclick="uploadDoc('${escJs(id)}','${escJs(label)}')">🔄 تغيير</button>
-      <button onclick="deleteDoc('${escJs(id)}','${escJs(label)}')">🗑️ حذف</button>
+      <button onclick="removeUploadedDoc('${escJs(id)}','${escJs(label)}')">🗑️ حذف</button>
     </div>
   </div>
   <p style="text-align:center;font-size:11px;color:var(--ok);font-weight:800;margin-bottom:8px">✅ ${esc(label)}</p>`;
 }
-function deleteDoc(id,label){
+function removeUploadedDoc(id,label){
   delete window.uploadedDocs[id];
   const wrap=document.getElementById(id+'-wrap');
   wrap.innerHTML=`<div class="upload-box" onclick="uploadDoc('${escJs(id)}','${escJs(label)}')" id="${id}"><span class="doc-help" onclick="event.stopPropagation();showToast('لازم تكون الصورة واضحة وكل البيانات ظاهرة')">؟</span><div class="u-ic">📷</div><p>${esc(label)}</p></div>`;
@@ -1540,7 +1540,7 @@ Object.assign(window, {
   toggleAgree, toggleDriverMap, toggleOnline, updOrdStatus, updOrdStatus2, updateCartUI,
   updateEntryLabel, uploadBannerImg,
   dregNext, dregBack, dregSetExp, dregGetLocation, dregSaveDraft, dregInit,
-  openTermsModal, closeTermsModal, agreeTermsModal, uploadDoc, deleteDoc, zoomDoc, closeZoom
+  openTermsModal, closeTermsModal, agreeTermsModal, uploadDoc, removeUploadedDoc, zoomDoc, closeZoom
 });
 
 // ===== AUTH STATE LISTENER =====
