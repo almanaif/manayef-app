@@ -315,6 +315,14 @@
     <p style="font-size:12px;color:var(--mu)">📱 هيوصلك إشعار لما الحساب يِتقبل</p>
     <button class="btn-p" onclick="showScreen('screen-entry')" style="margin-top:20px">العودة للرئيسية</button>
   </div>
+
+  <!-- STEP 4b: تم الرفض -->
+  <div class="success-wrap" id="dreg-rejected" style="display:none">
+    <div class="si">❌</div><h2>لم تتم الموافقة على طلبك</h2>
+    <div class="success-card"><div class="sr"><span>السبب</span><span id="dreg-rej-reason" style="color:var(--danger)">--</span></div></div>
+    <p style="font-size:12px;color:var(--mu)">تقدر تصحّح بياناتك وترسل الطلب تاني</p>
+    <button class="btn-p" onclick="dregRestart()" style="margin-top:20px">تعديل وإعادة الإرسال</button>
+  </div>
 </div>
 
 <!-- ===== TERMS MODAL ===== -->
@@ -393,7 +401,7 @@
 
 <!-- ===== ADMIN PANEL ===== -->
 <div id="screen-admin" class="screen">
-  <div class="adm-top"><div class="adm-logo">منايف <span>GO</span></div><button class="icon-btn" onclick="openNotifs()" style="color:#fff;background:rgba(255,255,255,.1)">🔔<span class="badge" id="adm-notif-c">0</span></button></div>
+  <div class="adm-top"><div class="adm-logo">منايف <span>GO</span></div><div style="display:flex;gap:8px"><button class="icon-btn" onclick="openNotifs()" style="color:#fff;background:rgba(255,255,255,.1)">🔔<span class="badge" id="adm-notif-c">0</span></button><button class="icon-btn" onclick="admLogoutConfirm()" style="color:#fff;background:rgba(255,255,255,.1)" title="تسجيل الخروج">🚪</button></div></div>
   <div class="adm-nav">
     <button class="adm-nb active" onclick="admNav('dashboard',this)">📊 لوحة</button>
     <button class="adm-nb" onclick="admNav('drivers',this)">🛵 مناديب</button>
@@ -405,6 +413,7 @@
     <button class="adm-nb" onclick="admNav('banners',this)">🖼️ بانرات</button>
     <button class="adm-nb" onclick="admNav('coupons',this)">🎟️ قسائم</button>
     <button class="adm-nb" onclick="admNav('map',this)">🗺️ خريطة</button>
+    <button class="adm-nb" onclick="admNav('audit',this)">🧾 سجل</button>
   </div>
 
   <!-- Dashboard -->
@@ -414,6 +423,14 @@
       <div class="kpi gn"><span class="ki">💰</span><span class="kv" id="adm-t-rev">0 ج</span><span class="kl">إيرادات اليوم</span></div>
       <div class="kpi bl"><span class="ki">👤</span><span class="kv" id="adm-t-users">0</span><span class="kl">العملاء</span></div>
       <div class="kpi yw"><span class="ki">🛵</span><span class="kv" id="adm-act-drvs">0</span><span class="kl">المناديب النشطين</span></div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi bl"><span class="ki">🛵</span><span class="kv" id="adm-t-drvs">0</span><span class="kl">إجمالي المناديب</span></div>
+      <div class="kpi or"><span class="ki">🏪</span><span class="kv" id="adm-t-merch">0</span><span class="kl">إجمالي التجار</span></div>
+      <div class="kpi gn"><span class="ki">📦</span><span class="kv" id="adm-t-allords">0</span><span class="kl">إجمالي الطلبات</span></div>
+      <div class="kpi gn"><span class="ki">✅</span><span class="kv" id="adm-t-doneords">0</span><span class="kl">طلبات مكتملة</span></div>
+      <div class="kpi yw"><span class="ki">❌</span><span class="kv" id="adm-t-cancords">0</span><span class="kl">طلبات ملغاة</span></div>
+      <div class="kpi or"><span class="ki">💰</span><span class="kv" id="adm-t-allrev">0 ج</span><span class="kl">إجمالي الإيرادات</span></div>
     </div>
     <div class="adm-card"><h3>الطلبات الأخيرة</h3><div id="adm-recent-ords"></div></div>
   </div>
@@ -431,7 +448,19 @@
 
   <!-- Orders -->
   <div id="adm-orders" class="adm-content" style="display:none">
-    <div class="adm-card"><h3>كل الطلبات</h3><div id="adm-all-ords"></div></div>
+    <div class="adm-card"><h3>كل الطلبات</h3>
+      <div class="fb2">
+        <button class="fc2 active" onclick="filtOrds('all',this)">الكل</button>
+        <button class="fc2" onclick="filtOrds('new',this)">⏳ قيد الانتظار</button>
+        <button class="fc2" onclick="filtOrds('accepted',this)">✅ مقبول</button>
+        <button class="fc2" onclick="filtOrds('preparing',this)">👨‍🍳 جاري التحضير</button>
+        <button class="fc2" onclick="filtOrds('ready',this)">📦 جاهز</button>
+        <button class="fc2" onclick="filtOrds('delivering',this)">🛵 مع المندوب</button>
+        <button class="fc2" onclick="filtOrds('done',this)">🏁 مكتمل</button>
+        <button class="fc2" onclick="filtOrds('cancelled',this)">❌ ملغي</button>
+      </div>
+      <div id="adm-all-ords"></div>
+    </div>
   </div>
 
   <!-- Users -->
@@ -481,6 +510,11 @@
   <div id="adm-map" class="adm-content" style="display:none">
     <div class="adm-map-wrap"><div id="admin-map"></div></div>
     <div class="adm-card"><h3>المناديب على الخريطة</h3><div class="map-legend"><div class="ml-item">🛵 مندوب نشط</div><div class="ml-item">🏪 متجر</div></div></div>
+  </div>
+
+  <!-- Audit Log -->
+  <div id="adm-audit" class="adm-content" style="display:none">
+    <div class="adm-card"><h3>سجل عمليات الإدارة</h3><div id="adm-audit-list"></div></div>
   </div>
 
   <div class="bottom-nav" style="display:none"></div>
@@ -608,6 +642,98 @@
     <div class="modal-acts">
       <button class="btn-ok" onclick="saveCoupon()">حفظ</button>
       <button class="btn-outline" onclick="closeModal('add-coupon-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REJECTION REASON MODAL ===== -->
+<div class="modal-overlay" id="reason-modal" onclick="if(event.target===this)closeReasonModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="reason-modal-title">سبب الرفض</div>
+    <div class="fb2" id="reason-presets"></div>
+    <div class="inp-g"><label>السبب</label><textarea id="reason-text" class="inp" rows="3" placeholder="اكتب سبب الرفض هنا..."></textarea></div>
+    <div class="modal-acts">
+      <button class="btn-danger" onclick="confirmReasonModal()">تأكيد الرفض</button>
+      <button class="btn-outline" onclick="closeReasonModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADMIN STORE MANAGE (full screen) ===== -->
+<div class="screen" id="screen-store-manage" style="display:none">
+  <div class="adm-top"><button class="icon-btn" onclick="closeStoreManage()" style="color:#fff;background:rgba(255,255,255,.1)">→</button><div class="adm-logo" id="sm-title">إدارة المتجر</div><span style="width:36px"></span></div>
+  <div class="adm-nav">
+    <button class="adm-nb active" onclick="smTab('profile',this)">🏪 بيانات المتجر</button>
+    <button class="adm-nb" onclick="smTab('products',this)">📦 المنتجات</button>
+  </div>
+
+  <div id="sm-profile" class="adm-content">
+    <div class="adm-card">
+      <h3>الصور</h3>
+      <div style="display:flex;gap:10px;margin-bottom:6px">
+        <div style="flex:1;text-align:center">
+          <div id="sm-logo-box" style="width:80px;height:80px;border-radius:16px;background:var(--bg);margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:28px;background-size:cover;background-position:center;cursor:pointer" onclick="smUploadLogo()">🏪</div>
+          <button class="mb2 mb-view" onclick="smUploadLogo()">تغيير الشعار</button>
+        </div>
+        <div style="flex:2;text-align:center">
+          <div id="sm-cover-box" style="width:100%;height:80px;border-radius:12px;background:var(--bg);margin-bottom:6px;display:flex;align-items:center;justify-content:center;font-size:22px;background-size:cover;background-position:center;cursor:pointer" onclick="smUploadCover()">🖼️ صورة الغلاف</div>
+          <div style="display:flex;gap:6px;justify-content:center"><button class="mb2 mb-view" onclick="smUploadCover()">تغيير الغلاف</button><button class="mb2 mb-rej" onclick="smDeleteCover()">حذف الغلاف</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="adm-card">
+      <h3>بيانات المتجر</h3>
+      <div class="inp-g"><label>اسم المتجر</label><input type="text" id="sm-name" class="inp"></div>
+      <div class="inp-g"><label>وصف المتجر</label><textarea id="sm-desc" class="inp" rows="2"></textarea></div>
+      <div class="inp-g"><label>رقم الهاتف</label><input type="text" id="sm-phone" class="inp"></div>
+      <div class="inp-g"><label>واتساب</label><input type="text" id="sm-wa" class="inp"></div>
+      <div class="inp-g"><label>العنوان</label><input type="text" id="sm-addr" class="inp"></div>
+      <div class="inp-g"><label>أوقات العمل</label><input type="text" id="sm-hours" class="inp" placeholder="مثال: 9 ص - 12 م يوميًا"></div>
+      <div style="display:flex;gap:10px">
+        <div class="inp-g" style="flex:1"><label>الحد الأدنى للطلب (ج)</label><input type="number" id="sm-minord" class="inp"></div>
+        <div class="inp-g" style="flex:1"><label>رسوم التوصيل (ج)</label><input type="number" id="sm-delfee" class="inp"></div>
+      </div>
+      <div class="inp-g"><label>حالة المتجر</label>
+        <div class="fb2">
+          <button class="fc2" id="sm-open-btn" onclick="smSetOpen(true)">🟢 مفتوح</button>
+          <button class="fc2" id="sm-closed-btn" onclick="smSetOpen(false)">🔴 مغلق</button>
+        </div>
+      </div>
+      <button class="btn-p" onclick="smSaveProfile()">💾 حفظ التعديلات</button>
+    </div>
+    <div class="adm-card">
+      <h3>إجراءات الحساب</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="mb2 mb-acc" onclick="smSetAccountStatus('active')">✅ تفعيل</button>
+        <button class="mb2 mb-rej" onclick="smSetAccountStatus('paused')">⏸️ إيقاف مؤقت</button>
+        <button class="mb2 mb-rej" onclick="smDeleteStore()">🗑️ حذف المتجر</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="sm-products" class="adm-content" style="display:none">
+    <div class="adm-card">
+      <button class="btn-p" onclick="openAddProd()" style="margin-bottom:12px">➕ إضافة منتج</button>
+      <div id="sm-prods-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EDIT PRODUCT MODAL ===== -->
+<div class="modal-overlay" id="edit-prod-modal" onclick="if(event.target===this)closeModal('edit-prod-modal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ تعديل المنتج</div>
+    <div class="inp-g"><label>اسم المنتج</label><input type="text" id="ep-name" class="inp"></div>
+    <div class="inp-g"><label>السعر (جنيه)</label><input type="number" id="ep-price" class="inp"></div>
+    <div class="inp-g"><label>الكمية المتاحة (اتركه فارغ لغير محدود)</label><input type="number" id="ep-stock" class="inp" placeholder="مثال: 50"></div>
+    <div class="inp-g"><label>الوحدة</label><input type="text" id="ep-unit" class="inp"></div>
+    <div class="inp-g"><label>أيقونة (emoji)</label><input type="text" id="ep-icon" class="inp"></div>
+    <input type="hidden" id="ep-id" value="">
+    <div class="modal-acts">
+      <button class="btn-ok" onclick="saveEditProd()">حفظ</button>
+      <button class="btn-outline" onclick="closeModal('edit-prod-modal')">إلغاء</button>
     </div>
   </div>
 </div>
