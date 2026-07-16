@@ -4,8 +4,8 @@
 import { db, auth, gProvider, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, limit, deleteDoc, runTransaction, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail, CLOUDINARY_CLOUD, CLOUDINARY_PRESET, STORE_LOC, DEFAULT_LOC } from './firebase.js';
 
 // ===== ORDER STATUS CONSTANTS =====
-const SL = {new:'جديد',accepted:'تم القبول',preparing:'جاري التحضير',ready:'جاهز',delivering:'في الطريق',done:'تم التسليم'};
-const SC = {new:'sb sb-new',accepted:'sb sb-accepted',preparing:'sb sb-preparing',ready:'sb sb-ready',delivering:'sb sb-delivering',done:'sb sb-done'};
+const SL = {new:'جديد',accepted:'تم القبول',preparing:'جاري التحضير',ready:'جاهز',delivering:'في الطريق',done:'تم التسليم',cancelled:'ملغي'};
+const SC = {new:'sb sb-new',accepted:'sb sb-accepted',preparing:'sb sb-preparing',ready:'sb sb-ready',delivering:'sb sb-delivering',done:'sb sb-done',cancelled:'sb sb-cancelled'};
 const STEPS = ['new','accepted','preparing','ready','delivering','done'];
 const STEP_ICONS = ['🆕','✅','👨‍🍳','📦','🛵','✅'];
 const STEP_LABELS = ['جديد','تم القبول','جاري التحضير','جاهز للاستلام','في الطريق','تم التسليم'];
@@ -243,6 +243,7 @@ function openCart() {
 async function goCheckout() {
   if (!window.cart.length) { showToast('السلة فارغة!','err'); return; }
   if (!window.CU) { showScreen('screen-entry'); return; }
+  if (window.cart.length > 12) { showToast('الحد الأقصى 12 صنف مختلف في الطلب الواحد','err'); return; }
   try {
     const total = window.cart.reduce((a,c)=>a+c.price*c.qty,0);
     const comm = Math.round(total*window.commRate/100);
@@ -304,7 +305,7 @@ function loadCustomerData() {
   const pts = ud.points || 0;
   ['user-pts','pts-big','pts-prof','pts-menu'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=pts; });
   if (ud.photoURL) {
-    ['cust-av'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=`<img src="${ud.photoURL}" alt="avatar">`; });
+    ['cust-av'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=`<img src="${esc(ud.photoURL)}" alt="avatar">`; });
   }
   loadOrders();
   loadStores();
@@ -364,14 +365,20 @@ function openTrack(ordId) {
     document.getElementById('track-eta').textContent = '15-25 دقيقة';
     document.getElementById('track-total').textContent = (o.total||0) + ' ج';
     // Timeline
-    const si = STEPS.indexOf(o.status||'new');
-    let tHtml = '';
-    STEPS.forEach((s,i) => {
-      const done = i < si;
-      const active = i === si;
-      tHtml += `<div class="tt-item"><div class="tt-left"><div class="tt-dot ${done ? 'done' : ''} ${active ? 'active' : ''}">${STEP_ICONS[i]}</div>${i < STEPS.length - 1 ? `<div class="tt-line ${done ? 'done' : ''}"></div>` : ''}</div><div class="tt-right"><strong>${STEP_LABELS[i]}</strong><small>${SL[s]}</small>${active ? '<span class="tt-time">الحالة الحالية</span>' : ''}${done ? '<span class="tt-time" style="color:var(--ok)">✓ مكتمل</span>' : ''}</div></div>`;
-    });
-    document.getElementById('track-timeline').innerHTML = tHtml;
+    if (o.status === 'cancelled') {
+      document.getElementById('track-timeline').innerHTML =
+        `<div class="tt-item"><div class="tt-left"><div class="tt-dot" style="background:var(--danger);color:#fff">❌</div></div>
+          <div class="tt-right"><strong style="color:var(--danger)">تم إلغاء الطلب</strong><small>يمكنك التواصل مع المتجر لمعرفة السبب</small></div></div>`;
+    } else {
+      const si = STEPS.indexOf(o.status||'new');
+      let tHtml = '';
+      STEPS.forEach((s,i) => {
+        const done = i < si;
+        const active = i === si;
+        tHtml += `<div class="tt-item"><div class="tt-left"><div class="tt-dot ${done ? 'done' : ''} ${active ? 'active' : ''}">${STEP_ICONS[i]}</div>${i < STEPS.length - 1 ? `<div class="tt-line ${done ? 'done' : ''}"></div>` : ''}</div><div class="tt-right"><strong>${STEP_LABELS[i]}</strong><small>${SL[s]}</small>${active ? '<span class="tt-time">الحالة الحالية</span>' : ''}${done ? '<span class="tt-time" style="color:var(--ok)">✓ مكتمل</span>' : ''}</div></div>`;
+      });
+      document.getElementById('track-timeline').innerHTML = tHtml;
+    }
     // Rating section
     document.getElementById('rating-section').style.display = o.status==='done'?'block':'none';
     // Init map
@@ -701,7 +708,7 @@ function loadDriverData() {
     document.getElementById('drv-prof-sub').textContent = ud.email||'--';
     if (ud.photoURL) {
       const av = document.getElementById('drv-av');
-      if (av) av.innerHTML = `<img src="${ud.photoURL}" alt="">`;
+      if (av) av.innerHTML = `<img src="${esc(ud.photoURL)}" alt="">`;
     }
     const rn = document.getElementById('drv-rating-num');
     if (rn) rn.textContent = (ud.rating!=null ? ud.rating : 5.0).toFixed(1);
@@ -713,7 +720,7 @@ function loadDriverData() {
 
 function listenNewOrders() {
   if (!window.CU) return;
-  const q = query(collection(db,'orders'), where('status','==','new'), where('driverId','==',null));
+  const q = query(collection(db,'orders'), where('status','in',['new','accepted','preparing','ready']), where('driverId','==',null));
   onSnapshot(q, snap => {
     if (!snap.empty && window.onlineStatus) {
       const ord = snap.docs[0]; const o = ord.data();
@@ -748,10 +755,10 @@ function loadDriverOrders() {
         <div class="ord-route"><div class="ord-pt"><div class="ol">الاستلام</div><div class="ov">${esc(o.storeName)||'--'}</div></div><span class="ord-arr">←</span><div class="ord-pt"><div class="ol">التوصيل</div><div class="ov">${esc(o.customerName)||'العميل'}</div></div></div>
         <div class="ord-foot"><div class="ord-earn">${o.driverFee||0} ج <small>أجر التوصيل</small></div>
           <div style="display:flex;gap:5px">
-            ${o.status==='new'||o.status==='accepted'?`<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','preparing')">بدأت التحضير</button>`:''}
-            ${o.status==='preparing'?`<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','ready')">جاهز</button>`:''}
             ${o.status==='ready'?`<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','delivering')">استلمت ✓</button>`:''}
             ${o.status==='delivering'?`<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','done')">سلّمت ✓</button>`:''}
+            ${(o.status==='new'||o.status==='accepted'||o.status==='preparing')?`<span style="font-size:11px;color:var(--mu);font-weight:600">⏳ بانتظار تجهيز التاجر</span>`:''}
+            ${o.status==='cancelled'?`<span style="font-size:11px;color:var(--danger);font-weight:700">❌ الطلب ملغي من التاجر</span>`:''}
           </div>
         </div>
       </div>`;
@@ -771,10 +778,12 @@ function loadDriverOrders() {
 async function acceptOrd() {
   if (!window._pendingOrdId || !window.CU) return;
   try {
+    // مهم: لا نغيّر status هنا. status بتاع مسار التاجر (new→accepted→preparing→ready)
+    // والمندوب بيتعيّن على الطلب بس (driverId) من غير ما يقفز على حالة التاجر.
+    // ده بيمنع تعارض "accepted" اللي كان بيتكتب من الاتنين بمعنيين مختلفين.
     await updateDoc(doc(db,'orders',window._pendingOrdId), {
       driverId: window.CU.uid,
       driverName: window.CUD?.name||'',
-      status: 'accepted',
       acceptedAt: serverTimestamp()
     });
     document.getElementById('new-ord-banner').style.display='none';
