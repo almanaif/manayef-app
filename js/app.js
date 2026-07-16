@@ -1,7 +1,29 @@
 // ===== Manayef GO - Main Application Logic =====
 // Imported from firebase.js module
 
-import { db, auth, gProvider, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, limit, deleteDoc, runTransaction, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail, CLOUDINARY_CLOUD, CLOUDINARY_PRESET, STORE_LOC, DEFAULT_LOC } from './firebase.js';
+import { db, auth, gProvider, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot as _onSnapshotRaw, query, where, orderBy, serverTimestamp, limit, deleteDoc, runTransaction, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail, CLOUDINARY_CLOUD, CLOUDINARY_PRESET, STORE_LOC, DEFAULT_LOC } from './firebase.js';
+
+// ===== LISTENER REGISTRY (تنظيف onSnapshot تلقائيًا عند تسجيل الخروج) =====
+// أي كود في الملف بينده onSnapshot(...) بيتسجل هنا تلقائيًا من غير ما نلمس كل مكان مستخدم فيه.
+// ده بيحل مشكلتين: تسريب الذاكرة (listeners بتفضل شغالة بعد تسجيل الخروج)، وتسريب بيانات
+// مستخدم لمستخدم تاني بيسجل دخول بعده على نفس الجهاز من غير ما الصفحة تتعمل لها reload.
+const _listeners = [];
+function onSnapshot(...args) {
+  const unsub = _onSnapshotRaw(...args);
+  _listeners.push(unsub);
+  return unsub;
+}
+function clearAllListeners() {
+  _listeners.forEach(u => { try { u(); } catch (e) { Logger.error(e); } });
+  _listeners.length = 0;
+  // إعادة ضبط أعلام "already started" عشان تعمل subscribe جديد نظيف للمستخدم اللي هيسجل دخول بعد كده
+  if (typeof productsUnsub !== 'undefined') productsUnsub = null;
+  if (typeof couponsUnsub !== 'undefined') couponsUnsub = null;
+  if (typeof bannersUnsub !== 'undefined') bannersUnsub = null;
+  if (typeof categoriesUnsub !== 'undefined') categoriesUnsub = null;
+  if (typeof notifListenerStarted !== 'undefined') notifListenerStarted = false;
+  if (typeof settingsUnsub !== 'undefined') settingsUnsub = null;
+}
 
 // ===== ORDER STATUS CONSTANTS =====
 const SL = {new:'جديد',accepted:'تم القبول',preparing:'جاري التحضير',ready:'جاهز',delivering:'في الطريق',done:'تم التسليم',cancelled:'ملغي'};
@@ -9,6 +31,29 @@ const SC = {new:'sb sb-new',accepted:'sb sb-accepted',preparing:'sb sb-preparing
 const STEPS = ['new','accepted','preparing','ready','delivering','done'];
 const STEP_ICONS = ['🆕','✅','👨‍🍳','📦','🛵','✅'];
 const STEP_LABELS = ['جديد','تم القبول','جاري التحضير','جاهز للاستلام','في الطريق','تم التسليم'];
+
+// ===== LOGGER (بديل موحد لـ console.log) =====
+const DEV_MODE = false; // خليها true وقت التطوير فقط
+const Logger = {
+  info: (...a) => { if (DEV_MODE) console.log('[INFO]', ...a); },
+  warn: (...a) => { if (DEV_MODE) console.warn('[WARN]', ...a); },
+  error: (...a) => { console.error('[ERROR]', ...a); } // الأخطاء تتسجل دايمًا
+};
+
+// ===== DEBOUNCE =====
+function debounce(fn, wait = 300) {
+  let t;
+  return function (...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+// ===== OFFLINE HANDLING =====
+function initOfflineHandling() {
+  window.addEventListener('offline', () => showToast('⚠️ لا يوجد اتصال بالإنترنت', 'err'));
+  window.addEventListener('online', () => showToast('✅ تم استعادة الاتصال', 'ok'));
+}
 
 // ===== XSS PROTECTION =====
 // أي نص جاي من قاعدة البيانات (اسم منتج، اسم متجر، اسم مستخدم...) لازم يعدي من هنا
@@ -116,9 +161,12 @@ function loadCategories() {
 }
 
 // ===== STORES LOADER (from Firestore - NO DUMMY DATA) =====
+// جديد: كان بيقرا من /users فين role=='merchant' وده كان بيسرّب بيانات التاجر الخاصة
+// (docs/ownerPhone/email) لأي حد مسجل دخول. دلوقتي بيقرا من /stores اللي فيها بس
+// البيانات العامة الآمنة للعرض.
 function loadStores() {
   if (!window.CU) return;
-  const q = query(collection(db,'users'), where('role','==','merchant'), where('status','==','active'));
+  const q = query(collection(db,'stores'), where('status','==','active'));
   onSnapshot(q, snap => {
     const list = document.getElementById('stores-list');
     if (snap.empty) {
@@ -187,7 +235,7 @@ function renderProds(cat) {
 }
 
 // ===== SEARCH =====
-function doSearch(val) {
+const doSearch = debounce(function (val) {
   const res = document.getElementById('search-results');
   if (!val.trim()) { res.style.display='none'; res.innerHTML=''; return; }
   const v = val.toLowerCase();
@@ -202,7 +250,7 @@ function doSearch(val) {
       <span class="res-price">${p.price} ج</span>
     </div>`
   ).join('');
-}
+}, 250);
 
 // ===== FILTER CATEGORIES =====
 function filterCat(cat, el) {
@@ -389,6 +437,7 @@ function openTrack(ordId) {
 // ===== MAPS =====
 function initTrackMap(ordData) {
   if (window.trackMap) { window.trackMap.remove(); window.trackMap = null; }
+  window.driverMarker = null; window.customerMarker = null; // كانت بتفضل مشيرة لماركرز على خريطة اتشالت
   if (typeof L === 'undefined') return;
   window.trackMap = L.map('tracking-map', {zoomControl:false, attributionControl:false}).setView(STORE_LOC, 14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.trackMap);
@@ -559,8 +608,7 @@ async function doRegister() {
     email = document.getElementById('r-store-mail')?.value?.trim();
     pass = document.getElementById('r-store-pass')?.value;
     if (!storeName||!email||!pass) { showErr('يرجى تعبئة اسم المتجر والبريد وكلمة المرور'); return; }
-    data = { name:ownerName, storeName, storePhone, ownerPhone, address:storeAddr, email, role, points:0, status:'pending', docs:window.uploadedDocs||{}, createdAt:serverTimestamp() };
-  } else if (role === 'driver') {
+    data = { name:ownerName, storeName, storePhone, ownerPhone, address:storeAddr, email, role, points:0, status:'pending', docs:window.uploadedDocs||{}, createdAt:serverTimestamp() };  } else if (role === 'driver') {
     const fullName = document.getElementById('r-drv-name')?.value?.trim();
     const phone = document.getElementById('r-drv-phone')?.value?.trim();
     const address = document.getElementById('r-drv-addr')?.value?.trim();
@@ -574,6 +622,13 @@ async function doRegister() {
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await setDoc(doc(db,'users',cred.user.uid), data);
+    if (role === 'merchant') {
+      // مستند عام آمن للعرض فقط (بدون docs/ownerPhone/email الخاصة بالتاجر)
+      await setDoc(doc(db,'stores',cred.user.uid), {
+        storeName: data.storeName, storePhone: data.storePhone,
+        category: data.category || 'متجر', status: 'pending', createdAt: serverTimestamp()
+      });
+    }
     window.CUD = data;
     syncToHubSpot(data);
     showToast('تم إنشاء حسابك! 🎉','ok');
@@ -590,6 +645,8 @@ async function doRegister() {
 async function doLogout() {
   if (window._gpsWatch) navigator.geolocation.clearWatch(window._gpsWatch);
   if (window._gpsInterval) clearInterval(window._gpsInterval);
+  _lastGpsWrite = 0; _lastGpsLat = null; _lastGpsLng = null;
+  clearAllListeners(); // يقفل كل الـ onSnapshot listeners المفتوحة (طلبات، منتجات، إشعارات...)
   try { await signOut(auth); } catch(e) {}
   showScreen('screen-entry');
 }
@@ -622,6 +679,15 @@ async function selectRole(role) {
   } catch(e) { showToast('حدث خطأ، حاول مرة أخرى','err'); }
 }
 
+// ===== SETTINGS LISTENER (جديد - العمولة بقت مركزية بدل قيمة ثابتة في المتصفح) =====
+let settingsUnsub = null;
+function listenSettings() {
+  if (settingsUnsub) return;
+  settingsUnsub = onSnapshot(doc(db,'settings','commission'), snap => {
+    if (snap.exists() && typeof snap.data().rate === 'number') window.commRate = snap.data().rate;
+  }, () => {});
+}
+
 // ===== ROUTING =====
 function routeUser() {
   const role = window.CUD?.role;
@@ -629,6 +695,7 @@ function routeUser() {
   loadCategories();
   loadBanners();
   loadCoupons();
+  listenSettings();
   if (role === 'admin') { showScreen('screen-admin'); loadAdminData(); }
   else if (role === 'driver') {
     if (window.CUD?.status === 'pending') showScreen('screen-driver-register');
@@ -651,15 +718,28 @@ function getLocation() {
   }, ()=>{});
 }
 
+// جديد: تحديث الموقع كان بيكتب على Firestore مع كل نبضة GPS (ممكن كل ثانية أو أقل).
+// دلوقتي بنكتب بس كل 10 ثواني على الأقل، أو لو المندوب اتحرك أكتر من 30 متر.
+function _distMeters(lat1,lng1,lat2,lng2){
+  const R=6371000, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+let _lastGpsWrite = 0, _lastGpsLat = null, _lastGpsLng = null;
 function startGPS() {
   if (!navigator.geolocation || !window.CU) return;
   window._gpsWatch = navigator.geolocation.watchPosition(pos => {
     const {latitude:lat, longitude:lng} = pos.coords;
     window.driverLat = lat; window.driverLng = lng;
-    updateDoc(doc(db,'users',window.CU.uid), {lat, lng, lastSeen: serverTimestamp()}).catch(()=>{});
     if (window.drvMap && window.driverMarker && typeof L !== 'undefined') {
       window.driverMarker.setLatLng([lat, lng]);
     }
+    const now = Date.now();
+    const movedFar = _lastGpsLat===null || _distMeters(_lastGpsLat,_lastGpsLng,lat,lng) >= 30;
+    if (now - _lastGpsWrite < 10000 && !movedFar) return;
+    _lastGpsWrite = now; _lastGpsLat = lat; _lastGpsLng = lng;
+    updateDoc(doc(db,'users',window.CU.uid), {lat, lng, lastSeen: serverTimestamp()}).catch(()=>{});
   }, ()=>{}, {enableHighAccuracy:true, maximumAge:10000, timeout:15000});
 }
 
@@ -778,22 +858,38 @@ function loadDriverOrders() {
 async function acceptOrd() {
   if (!window._pendingOrdId || !window.CU) return;
   try {
-    // مهم: لا نغيّر status هنا. status بتاع مسار التاجر (new→accepted→preparing→ready)
-    // والمندوب بيتعيّن على الطلب بس (driverId) من غير ما يقفز على حالة التاجر.
-    // ده بيمنع تعارض "accepted" اللي كان بيتكتب من الاتنين بمعنيين مختلفين.
-    await updateDoc(doc(db,'orders',window._pendingOrdId), {
-      driverId: window.CU.uid,
-      driverName: window.CUD?.name||'',
-      acceptedAt: serverTimestamp()
+    // جديد: استخدمنا Transaction عشان نتأكد إن المندوب مش مربوط بطلب تاني حاليًا
+    // (activeOrderId فاضي) قبل ما نعيّنه على الطلب ده - بيمنع قبول أكتر من طلب في نفس الوقت.
+    const orderRef = doc(db,'orders',window._pendingOrdId);
+    const userRef = doc(db,'users',window.CU.uid);
+    await runTransaction(db, async (t) => {
+      const uSnap = await t.get(userRef);
+      if (uSnap.data()?.activeOrderId) throw new Error('busy');
+      const oSnap = await t.get(orderRef);
+      if (oSnap.data()?.driverId) throw new Error('taken');
+      t.update(orderRef, {
+        driverId: window.CU.uid,
+        driverName: window.CUD?.name||'',
+        acceptedAt: serverTimestamp()
+      });
+      t.update(userRef, { activeOrderId: window._pendingOrdId });
     });
     document.getElementById('new-ord-banner').style.display='none';
     showToast('✅ تم قبول الطلب! توجه للمتجر','ok');
-  } catch(e) { showToast('حدث خطأ','err'); }
+  } catch(e) {
+    if (e?.message === 'busy') showToast('عندك طلب شغال بالفعل، خلّصه الأول','err');
+    else if (e?.message === 'taken') showToast('الطلب اتقبل من مندوب تاني','err');
+    else showToast('حدث خطأ','err');
+  }
 }
 
 async function updOrdStatus(id, status) {
   try {
     await updateDoc(doc(db,'orders',id), {status, updatedAt:serverTimestamp()});
+    // جديد: لما المندوب يخلّص الطلب، نفضّي activeOrderId عشان يقدر ياخد طلب جديد
+    if (status === 'done' && window.CU) {
+      await updateDoc(doc(db,'users',window.CU.uid), {activeOrderId: null}).catch(()=>{});
+    }
     const msgs = {preparing:'👨‍🍳 بدأت التحضير',ready:'📦 الطلب جاهز',delivering:'🛵 في الطريق للعميل',done:'✅ تم التسليم بنجاح!'};
     showToast(msgs[status]||'تم التحديث','ok');
   } catch(e) { showToast('حدث خطأ','err'); }
@@ -1301,8 +1397,8 @@ async function loadAdminData() {
 async function admUpdOrd(id,status){try{await updateDoc(doc(db,'orders',id),{status,updatedAt:serverTimestamp()});showToast('✅ تم تحديث الطلب','ok');}catch(e){showToast('حدث خطأ','err');}}
 async function admAccDrv(uid){try{await updateDoc(doc(db,'users',uid),{status:'active',approvedAt:serverTimestamp()});await addDoc(collection(db,'notifications'),{userId:uid,title:'🎉 تم قبول حسابك',body:'تم اعتماد حسابك كمندوب توصيل، تقدر تبدأ تستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});showToast('✅ تم قبول المندوب','ok');closeModal('drv-modal');}catch(e){showToast('حدث خطأ','err');}}
 async function admRejDrv(uid){try{await updateDoc(doc(db,'users',uid),{status:'rejected',rejectedAt:serverTimestamp()});await addDoc(collection(db,'notifications'),{userId:uid,title:'❌ لم تتم الموافقة على حسابك',body:'للأسف لم يتم قبول طلبك كمندوب. تواصل مع الدعم لمزيد من التفاصيل.',type:'gn',read:false,createdAt:serverTimestamp()});showToast('❌ تم رفض المندوب','err');closeModal('drv-modal');}catch(e){showToast('حدث خطأ','err');}}
-async function admAccStore(id){try{await updateDoc(doc(db,'users',id),{status:'active',approvedAt:serverTimestamp()});await addDoc(collection(db,'notifications'),{userId:id,title:'🎉 تم قبول متجرك',body:'تم اعتماد متجرك على منصة Manayef GO، تقدر تضيف منتجاتك وتستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});showToast('✅ تم قبول المتجر','ok');}catch(e){showToast('حدث خطأ','err');}}
-async function admRejStore(id){try{await updateDoc(doc(db,'users',id),{status:'rejected',rejectedAt:serverTimestamp()});await addDoc(collection(db,'notifications'),{userId:id,title:'❌ لم تتم الموافقة على متجرك',body:'للأسف لم يتم قبول طلب انضمام متجرك. تواصل مع الدعم لمزيد من التفاصيل.',type:'gn',read:false,createdAt:serverTimestamp()});showToast('❌ تم رفض المتجر','err');}catch(e){showToast('حدث خطأ','err');}}
+async function admAccStore(id){try{await updateDoc(doc(db,'users',id),{status:'active',approvedAt:serverTimestamp()});await updateDoc(doc(db,'stores',id),{status:'active'}).catch(()=>{});await addDoc(collection(db,'notifications'),{userId:id,title:'🎉 تم قبول متجرك',body:'تم اعتماد متجرك على منصة Manayef GO، تقدر تضيف منتجاتك وتستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});showToast('✅ تم قبول المتجر','ok');}catch(e){showToast('حدث خطأ','err');}}
+async function admRejStore(id){try{await updateDoc(doc(db,'users',id),{status:'rejected',rejectedAt:serverTimestamp()});await updateDoc(doc(db,'stores',id),{status:'rejected'}).catch(()=>{});await addDoc(collection(db,'notifications'),{userId:id,title:'❌ لم تتم الموافقة على متجرك',body:'للأسف لم يتم قبول طلب انضمام متجرك. تواصل مع الدعم لمزيد من التفاصيل.',type:'gn',read:false,createdAt:serverTimestamp()});showToast('❌ تم رفض المتجر','err');}catch(e){showToast('حدث خطأ','err');}}
 async function openDrvModal(uid){
   try{
     const d=await getDoc(doc(db,'users',uid));const u=d.data()||{};
@@ -1329,7 +1425,15 @@ function admNav(page,el){
   if(page==='map'){setTimeout(()=>initAdminMap([]),200);}
 }
 function filtDrvs(st,btn){document.querySelectorAll('.fc2').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('#adm-drvs-list .drv-row2').forEach(r=>r.style.display=(st==='all'||r.dataset.st===st)?'flex':'none');}
-function saveComm(){const v=parseInt(document.getElementById('comm-val').value)||10;window.commRate=v;document.getElementById('adm-comm-r').textContent=v+'%';showToast('✅ تم تحديث العمولة إلى '+v+'%','ok');}
+async function saveComm(){
+  const v=parseInt(document.getElementById('comm-val').value)||10;
+  try{
+    await setDoc(doc(db,'settings','commission'),{rate:v,updatedAt:serverTimestamp()});
+    // مانحدّثش window.commRate يدوي هنا - هيتحدّث لوحده من خلال listenSettings() لما التغيير يوصل
+    document.getElementById('adm-comm-r').textContent=v+'%';
+    showToast('✅ تم تحديث العمولة إلى '+v+'%','ok');
+  }catch(e){ showToast('حدث خطأ في حفظ العمولة','err'); }
+}
 
 // ===== ADMIN: CATEGORY MANAGEMENT =====
 function renderAdminCats(items) {
@@ -1591,6 +1695,8 @@ if (isSignInWithEmailLink(auth, window.location.href)) {
       });
   }
 }
+
+initOfflineHandling();
 
 onAuthStateChanged(auth, async user => {
   if (user) {
