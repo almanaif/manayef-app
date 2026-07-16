@@ -540,6 +540,8 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);overf
 .info-row .il{color:var(--mu);font-weight:600}
 .info-row .iv{font-weight:700}
 .doc-prev{background:var(--bg);border-radius:var(--r2);padding:14px;text-align:center;font-size:30px;margin:5px 0}
+#screen-store-manage{position:fixed;inset:0;z-index:600;background:var(--bg);overflow-y:auto}
+textarea.inp{resize:vertical;font-family:'Cairo',sans-serif}
 
 /* Notif Panel */
 .notif-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;backdrop-filter:blur(4px)}
