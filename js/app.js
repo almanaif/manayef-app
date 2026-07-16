@@ -1,7 +1,7 @@
 // ===== Manayef GO - Main Application Logic =====
 // Imported from firebase.js module
 
-import { db, auth, gProvider, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, limit, deleteDoc, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail, CLOUDINARY_CLOUD, CLOUDINARY_PRESET, STORE_LOC, DEFAULT_LOC } from './firebase.js';
+import { db, auth, gProvider, collection, doc, addDoc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, limit, deleteDoc, runTransaction, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail, CLOUDINARY_CLOUD, CLOUDINARY_PRESET, STORE_LOC, DEFAULT_LOC } from './firebase.js';
 
 // ===== ORDER STATUS CONSTANTS =====
 const SL = {new:'جديد',accepted:'تم القبول',preparing:'جاري التحضير',ready:'جاهز',delivering:'في الطريق',done:'تم التسليم'};
@@ -900,6 +900,21 @@ async function delProd(id){
   try{await deleteDoc(doc(db,'products',id));showToast('✅ تم حذف المنتج','ok');}catch(e){showToast('حدث خطأ','err');}
 }
 
+// --- رقم طلب تسلسلي: D1001, D1002, D1003... باستخدام عداد مركزي في Firestore ---
+async function getNextRequestId(counterName, prefix){
+  const counterRef = doc(db,'counters',counterName);
+  const seq = await runTransaction(db, async (t) => {
+    const snap = await t.get(counterRef);
+    const current = snap.exists() ? snap.data().seq : 1000;
+    const next = current + 1;
+    if (snap.exists()) t.update(counterRef, { seq: next });
+    else t.set(counterRef, { seq: next });
+    return next;
+  });
+  return prefix + seq;
+}
+
+
 // ===== DRIVER REGISTRATION WIZARD =====
 window.dregStep = window.dregStep || 1;
 window.driverLoc = window.driverLoc || null;
@@ -1167,6 +1182,7 @@ async function submitDrvReg(){
   setLoad('dreg-btn','dreg-sp',true);
   document.getElementById('dreg-btn').disabled=true;
   try{
+    const requestId = await getNextRequestId('driverRequests','D');
     const payload={
       fullName: document.getElementById('d-name').value.trim(),
       phone: document.getElementById('d-phone').value.trim(),
@@ -1180,7 +1196,7 @@ async function submitDrvReg(){
       plateNumber: document.getElementById('d-plate').value.trim(),
       hasExperience: window.driverHasExp!==false,
       location: window.driverLoc||null,
-      status:'pending', docsSubmitted:true, docs:window.uploadedDocs||{},
+      status:'pending', docsSubmitted:true, docs:window.uploadedDocs||{}, requestId,
       updatedAt: serverTimestamp()
     };
     await updateDoc(doc(db,'users',window.CU.uid), payload);
@@ -1188,7 +1204,7 @@ async function submitDrvReg(){
     document.getElementById('dreg-form').style.display='none';
     document.querySelector('.dreg-hdr').style.display='none';
     document.getElementById('dreg-pending').style.display='block';
-    document.getElementById('dreg-reqid').textContent = '#'+window.CU.uid.slice(-6).toUpperCase();
+    document.getElementById('dreg-reqid').textContent = requestId;
     showToast('✅ تم إرسال طلبك!','ok');
   }catch(e){ showToast('حدث خطأ، حاول تاني','err'); }
   finally{ setLoad('dreg-btn','dreg-sp',false); document.getElementById('dreg-btn').disabled=false; }
@@ -1200,7 +1216,7 @@ function dregInit(){
     document.getElementById('dreg-form').style.display='none';
     document.querySelector('.dreg-hdr').style.display='none';
     document.getElementById('dreg-pending').style.display='block';
-    document.getElementById('dreg-reqid').textContent = '#'+(window.CU?.uid||'').slice(-6).toUpperCase();
+    document.getElementById('dreg-reqid').textContent = window.CUD?.requestId || '--';
     return;
   }
   window.dregStep=1; window.uploadedDocs={}; window.agreedTerms=false; window.driverLoc=null; window.driverHasExp=true;
