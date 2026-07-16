@@ -971,10 +971,10 @@ function loadMerchantProds() {
       const p={...d.data(),id:d.id};
       html+=`<div style="background:#fff;border-radius:var(--r);padding:12px;margin-bottom:8px;box-shadow:var(--sh);border:1px solid var(--border);display:flex;gap:10px;align-items:center">
         <div style="width:48px;height:48px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${p.icon||'📦'}</div>
-        <div style="flex:1"><strong style="font-size:13px;font-weight:800;display:block">${esc(p.name)}</strong><small style="color:var(--mu);font-size:11px">${esc(p.unit)}</small>
+        <div style="flex:1"><strong style="font-size:13px;font-weight:800;display:block">${esc(p.name)}</strong><small style="color:var(--mu);font-size:11px">${esc(p.unit)}${p.stock!=null?' • الكمية: '+p.stock:''}</small>
           <div style="font-size:14px;font-weight:900;color:var(--p);margin-top:3px">${p.price} ج</div>
           <div style="display:flex;gap:5px;margin-top:6px">
-            <button class="mb2 mb-view" onclick="showToast('تعديل المنتج قريباً ✏️')">✏️ تعديل</button>
+            <button class="mb2 mb-view" onclick='openEditProd(${JSON.stringify(p).replace(/</g,"\\u003c")})'>✏️ تعديل</button>
             <button class="mb2 mb-rej" onclick="delProd('${d.id}')">🗑️ حذف</button>
             <span style="font-size:10px;font-weight:700;color:${p.available!==false?'var(--ok)':'var(--danger)'}">${p.available!==false?'✅ متاح':'❌ غير متاح'}</span>
           </div>
@@ -993,11 +993,16 @@ async function saveProd(){
   const price=parseFloat(document.getElementById('ap-price').value)||0;
   const icon=document.getElementById('ap-icon').value||'📦';
   if(!name||!price){showToast('يرجى تعبئة الاسم والسعر','err');return;}
-  if(!window.CU)return;
+  const merchantId = window.adminTargetStore || window.CU?.uid;
+  if(!merchantId)return;
   try{
-    await addDoc(collection(db,'products'),{merchantId:window.CU.uid,storeName:window.CUD?.storeName||window.CUD?.name||'متجر',name,cat,unit,price,icon,available:true,createdAt:serverTimestamp()});
+    const storeName = window.adminTargetStore
+      ? (document.getElementById('sm-name')?.value || 'متجر')
+      : (window.CUD?.storeName||window.CUD?.name||'متجر');
+    await addDoc(collection(db,'products'),{merchantId,storeName,name,cat,unit,price,icon,available:true,createdAt:serverTimestamp()});
     closeModal('add-prod-modal');
     ['ap-name','ap-price','ap-unit','ap-icon'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    if(window.adminTargetStore) logAudit('إضافة منتج (أدمن)', name+' — '+storeName);
     showToast('✅ تم إضافة المنتج','ok');
   }catch(e){showToast('حدث خطأ','err');}
 }
@@ -1317,6 +1322,15 @@ async function submitDrvReg(){
 
 // عند فتح شاشة التسجيل، رجّع أي بيانات محفوظة واعرض الخطوة الأولى
 function dregInit(){
+  if(window.CUD?.status==='rejected'){
+    document.getElementById('dreg-form').style.display='none';
+    document.querySelector('.dreg-hdr').style.display='none';
+    document.getElementById('dreg-pending').style.display='none';
+    document.getElementById('dreg-rejected').style.display='block';
+    document.getElementById('dreg-rej-reason').textContent = window.CUD?.rejectReason || 'تواصل مع الدعم لمعرفة التفاصيل';
+    return;
+  }
+  document.getElementById('dreg-rejected').style.display='none';
   if(window.CUD?.status==='pending' && window.CUD?.docsSubmitted){
     document.getElementById('dreg-form').style.display='none';
     document.querySelector('.dreg-hdr').style.display='none';
@@ -1331,6 +1345,13 @@ function dregInit(){
   dregGoto(1);
   dregLoadDraft();
   dregUpdateProgress();
+}
+function dregRestart(){
+  document.getElementById('dreg-rejected').style.display='none';
+  document.querySelector('.dreg-hdr').style.display='block';
+  document.getElementById('dreg-form').style.display='block';
+  window.dregStep=1; window.uploadedDocs={}; window.agreedTerms=false; window.driverLoc=null; window.driverHasExp=true;
+  dregGoto(1);
 }
 
 // ===== ADMIN FUNCTIONS =====
@@ -1358,19 +1379,25 @@ async function loadAdminData() {
       </div>`;
     });
     document.getElementById('adm-recent-ords').innerHTML=html||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا توجد طلبات</p></div>';
-    document.getElementById('adm-all-ords').innerHTML=recs.length?recs.map(o=>`<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+    document.getElementById('adm-all-ords').innerHTML=recs.length?recs.map(o=>`<div class="drv-row2" data-status="${o.status||'new'}" style="padding:9px 0;border-bottom:1px solid var(--border);display:block">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700">#${o.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'--'}</span></div>
       <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mu)">🏪 ${esc(o.storeName)||'--'}</span><span>${o.total||0} ج <span style="color:var(--p)">(${o.commission||0} ج)</span></span></div>
     </div>`).join(''):'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا توجد طلبات</p></div>';
+    const allOrds=document.getElementById('adm-t-allords'); if(allOrds) allOrds.textContent=snap.size;
+    const doneOrds=document.getElementById('adm-t-doneords'); if(doneOrds) doneOrds.textContent=recs.filter(o=>o.status==='done').length;
+    const cancOrds=document.getElementById('adm-t-cancords'); if(cancOrds) cancOrds.textContent=recs.filter(o=>o.status==='cancelled').length;
+    const allRev2=document.getElementById('adm-t-allrev'); if(allRev2) allRev2.textContent=allR+' ج';
   });
 
   onSnapshot(collection(db,'users'), snap=>{
     let cust=0,drvs=0,pendDrvs=[];const allDrvs=[];const allStores=[];
     snap.forEach(d=>{const u={...d.data(),id:d.id};if(u.role==='customer')cust++;if(u.role==='driver'){drvs++;if(u.status==='pending')pendDrvs.push(u);allDrvs.push(u);}if(u.role==='merchant')allStores.push(u);});
     document.getElementById('adm-t-users').textContent=cust;
-    document.getElementById('adm-act-drvs').textContent=drvs;
+    document.getElementById('adm-act-drvs').textContent=allDrvs.filter(u=>u.status==='active').length;
     document.getElementById('adm-users-c').textContent=cust;
     document.getElementById('adm-drvs-c').textContent=drvs;
+    const tDrvs=document.getElementById('adm-t-drvs'); if(tDrvs) tDrvs.textContent=drvs;
+    const tMerch=document.getElementById('adm-t-merch'); if(tMerch) tMerch.textContent=allStores.length;
     let pd='';
     pendDrvs.forEach(u=>{pd+=`<div class="drv-row2"><div class="drv-av2">👤</div><div class="drv-info2"><strong>${esc(u.fullName||u.name)||'--'}</strong><small>📱 ${esc(u.phone)||'--'}</small><br><span class="p-badge">⏳ بانتظار الموافقة</span></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick="openDrvModal('${u.id}')">تفاصيل</button></div></div>`;});
     document.getElementById('adm-pend-drvs').innerHTML=pd||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد مناديب معلّقون</p></div>';
@@ -1384,45 +1411,356 @@ async function loadAdminData() {
     let ul='';
     snap.forEach(d=>{const u=d.data();if(u.role!=='customer')return;ul+=`<div class="drv-row2"><div class="drv-av2" style="font-size:16px">👤</div><div class="drv-info2"><strong>${esc(u.name)||'--'}</strong><small>📱 ${esc(u.phone||u.email)||'--'} | ${u.points||0} نقطة</small></div></div>`;});
     document.getElementById('adm-users-list').innerHTML=ul||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد عملاء</p></div>';
-    let sh='';
-    allStores.forEach(m=>{
-      const mName = m.storeName || m.name || '--';
-      sh+=`<div class="drv-row2"><div class="drv-av2" style="background:#EFF6FF">🏬</div><div class="drv-info2"><strong>${esc(mName)}</strong><small>📱 ${esc(m.storePhone||m.phone)||'--'}${m.status==='pending'?'<br><span class="p-badge">⏳ بانتظار الموافقة</span>':m.status==='active'?' | ✅ نشط':' | ❌ مرفوض'}</small></div><div class="drv-row2-acts">${m.status==='pending'?`<button class="mb2 mb-acc" onclick="admAccStore('${m.id}')">قبول</button><button class="mb2 mb-rej" onclick="admRejStore('${m.id}')">رفض</button>`:`<button class="mb2 mb-view" onclick="showToast('${escJs(mName||'المتجر')}')">إدارة</button>`}</div></div>`;
-    });
-    document.getElementById('adm-stores-list').innerHTML=sh||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد تجار</p></div>';
+    renderAdminStoresList(allStores);
     if (window.admMap) initAdminMap(allDrvs);
   });
 }
 
+// ===== AUDIT LOG =====
+async function logAudit(action, details){
+  try{
+    await addDoc(collection(db,'auditLog'),{
+      adminId: window.CU?.uid||null,
+      adminName: window.CUD?.name||window.CU?.email||'أدمن',
+      action, details: details||'',
+      createdAt: serverTimestamp()
+    });
+  }catch(e){}
+}
+function loadAuditLog(){
+  const q=query(collection(db,'auditLog'),orderBy('createdAt','desc'),limit(80));
+  onSnapshot(q,snap=>{
+    let html='';
+    snap.forEach(d=>{
+      const a=d.data();
+      const dt=a.createdAt?.toDate?a.createdAt.toDate():null;
+      const timeStr=dt?dt.toLocaleString('ar-EG',{dateStyle:'short',timeStyle:'short'}):'--';
+      html+=`<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px"><strong style="font-size:12px">${esc(a.action)}</strong><small style="color:var(--mu);font-size:10px">${timeStr}</small></div>
+        <div style="font-size:11px;color:var(--mu)">👤 ${esc(a.adminName)||'أدمن'}${a.details?' — '+esc(a.details):''}</div>
+      </div>`;
+    });
+    document.getElementById('adm-audit-list').innerHTML=html||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد سجل عمليات بعد</p></div>';
+  });
+}
+
+// ===== ADMIN LOGOUT =====
+function admLogoutConfirm(){
+  if(confirm('هل تريد تسجيل الخروج من لوحة الإدارة؟')) doLogout();
+}
+
+// ===== REJECTION REASON MODAL (يُستخدم لرفض المندوب أو المتجر) =====
+window._reasonCallback = null;
+function openReasonModal(title, presets, callback){
+  document.getElementById('reason-modal-title').textContent = title;
+  document.getElementById('reason-text').value='';
+  const pr=document.getElementById('reason-presets');
+  pr.innerHTML = (presets||[]).map(p=>`<button class="fc2" type="button" onclick="document.getElementById('reason-text').value='${escJs(p)}'">${esc(p)}</button>`).join('');
+  window._reasonCallback = callback;
+  document.getElementById('reason-modal').classList.add('open');
+}
+function closeReasonModal(){
+  document.getElementById('reason-modal').classList.remove('open');
+  window._reasonCallback = null;
+}
+function confirmReasonModal(){
+  const reason = document.getElementById('reason-text').value.trim();
+  if(!reason){ showToast('اكتب سبب الرفض','err'); return; }
+  const cb = window._reasonCallback;
+  closeReasonModal();
+  if(cb) cb(reason);
+}
+
 async function admUpdOrd(id,status){try{await updateDoc(doc(db,'orders',id),{status,updatedAt:serverTimestamp()});showToast('✅ تم تحديث الطلب','ok');}catch(e){showToast('حدث خطأ','err');}}
-async function admAccDrv(uid){try{await updateDoc(doc(db,'users',uid),{status:'active',approvedAt:serverTimestamp()});await addDoc(collection(db,'notifications'),{userId:uid,title:'🎉 تم قبول حسابك',body:'تم اعتماد حسابك كمندوب توصيل، تقدر تبدأ تستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});showToast('✅ تم قبول المندوب','ok');closeModal('drv-modal');}catch(e){showToast('حدث خطأ','err');}}
-async function admRejDrv(uid){try{await updateDoc(doc(db,'users',uid),{status:'rejected',rejectedAt:serverTimestamp()});await addDoc(collection(db,'notifications'),{userId:uid,title:'❌ لم تتم الموافقة على حسابك',body:'للأسف لم يتم قبول طلبك كمندوب. تواصل مع الدعم لمزيد من التفاصيل.',type:'gn',read:false,createdAt:serverTimestamp()});showToast('❌ تم رفض المندوب','err');closeModal('drv-modal');}catch(e){showToast('حدث خطأ','err');}}
-async function admAccStore(id){try{await updateDoc(doc(db,'users',id),{status:'active',approvedAt:serverTimestamp()});await updateDoc(doc(db,'stores',id),{status:'active'}).catch(()=>{});await addDoc(collection(db,'notifications'),{userId:id,title:'🎉 تم قبول متجرك',body:'تم اعتماد متجرك على منصة Manayef GO، تقدر تضيف منتجاتك وتستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});showToast('✅ تم قبول المتجر','ok');}catch(e){showToast('حدث خطأ','err');}}
-async function admRejStore(id){try{await updateDoc(doc(db,'users',id),{status:'rejected',rejectedAt:serverTimestamp()});await updateDoc(doc(db,'stores',id),{status:'rejected'}).catch(()=>{});await addDoc(collection(db,'notifications'),{userId:id,title:'❌ لم تتم الموافقة على متجرك',body:'للأسف لم يتم قبول طلب انضمام متجرك. تواصل مع الدعم لمزيد من التفاصيل.',type:'gn',read:false,createdAt:serverTimestamp()});showToast('❌ تم رفض المتجر','err');}catch(e){showToast('حدث خطأ','err');}}
+async function admAccDrv(uid){try{await updateDoc(doc(db,'users',uid),{status:'active',approvedAt:serverTimestamp()});await addDoc(collection(db,'notifications'),{userId:uid,title:'🎉 تم قبول حسابك',body:'تم اعتماد حسابك كمندوب توصيل، تقدر تبدأ تستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});logAudit('قبول مندوب');showToast('✅ تم قبول المندوب','ok');closeModal('drv-modal');}catch(e){showToast('حدث خطأ','err');}}
+function admRejDrv(uid){
+  openReasonModal('سبب رفض المندوب', ['صورة البطاقة غير واضحة','الرخصة منتهية','البيانات غير مطابقة'], async(reason)=>{
+    try{
+      await updateDoc(doc(db,'users',uid),{status:'rejected',rejectReason:reason,rejectedAt:serverTimestamp()});
+      await addDoc(collection(db,'notifications'),{userId:uid,title:'❌ لم تتم الموافقة على حسابك',body:'للأسف لم يتم قبول طلبك كمندوب. السبب: '+reason,type:'gn',read:false,createdAt:serverTimestamp()});
+      logAudit('رفض مندوب', reason);
+      showToast('❌ تم رفض المندوب','err');
+      closeModal('drv-modal');
+    }catch(e){showToast('حدث خطأ','err');}
+  });
+}
+async function admAccStore(id){try{await updateDoc(doc(db,'users',id),{status:'active',approvedAt:serverTimestamp()});await updateDoc(doc(db,'stores',id),{status:'active'}).catch(()=>{});await addDoc(collection(db,'notifications'),{userId:id,title:'🎉 تم قبول متجرك',body:'تم اعتماد متجرك على منصة Manayef GO، تقدر تضيف منتجاتك وتستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});logAudit('قبول متجر');showToast('✅ تم قبول المتجر','ok');}catch(e){showToast('حدث خطأ','err');}}
+function admRejStore(id){
+  openReasonModal('سبب رفض المتجر', ['المستندات غير واضحة','بيانات المتجر غير مكتملة','نشاط غير مسموح به'], async(reason)=>{
+    try{
+      await updateDoc(doc(db,'users',id),{status:'rejected',rejectReason:reason,rejectedAt:serverTimestamp()});
+      await updateDoc(doc(db,'stores',id),{status:'rejected'}).catch(()=>{});
+      await addDoc(collection(db,'notifications'),{userId:id,title:'❌ لم تتم الموافقة على متجرك',body:'للأسف لم يتم قبول طلب انضمام متجرك. السبب: '+reason,type:'gn',read:false,createdAt:serverTimestamp()});
+      logAudit('رفض متجر', reason);
+      showToast('❌ تم رفض المتجر','err');
+    }catch(e){showToast('حدث خطأ','err');}
+  });
+}
 async function openDrvModal(uid){
   try{
     const d=await getDoc(doc(db,'users',uid));const u=d.data()||{};
+    const docs=u.docs||{};
+    const docLabels={'d-id1':'رقم قومي أمامي','d-id2':'رقم قومي خلفي','d-photo':'صورة شخصية','d-license':'رخصة موتوسيكل'};
+    const docsHtml = Object.keys(docLabels).map(k=>{
+      const url=docs[k];
+      return url
+        ? `<div class="doc-prev" style="padding:0;overflow:hidden;cursor:pointer" onclick="zoomDoc('${escJs(url)}')"><img src="${esc(url)}" style="width:100%;height:80px;object-fit:cover;display:block"><small style="display:block;padding:3px;font-size:9px">🔍 ${docLabels[k]}</small></div>`
+        : `<div class="doc-prev">🚫<br><small style="font-size:9px">${docLabels[k]} (لم يُرفع)</small></div>`;
+    }).join('');
+    const createdStr = u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString('ar-EG') : '--';
     document.getElementById('drv-modal-content').innerHTML=`
       <div class="info-row"><span class="il">الاسم</span><span class="iv">${esc(u.fullName||u.name)||'--'}</span></div>
       <div class="info-row"><span class="il">الهاتف</span><span class="iv">${esc(u.phone)||'--'}</span></div>
       <div class="info-row"><span class="il">العنوان</span><span class="iv">${esc(u.address)||'--'}</span></div>
+      <div class="info-row"><span class="il">تاريخ التسجيل</span><span class="iv">${createdStr}</span></div>
       <div class="info-row"><span class="il">الحالة</span><span class="iv">${u.status==='pending'?'⏳ بانتظار الموافقة':u.status==='active'?'✅ نشط':'❌ مرفوض'}</span></div>
-      <div style="margin:10px 0"><div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px">📄 المستندات:</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="doc-prev">🪪<br><small style="font-size:9px">رقم قومي أمامي</small></div>
-        <div class="doc-prev">🪪<br><small style="font-size:9px">رقم قومي خلفي</small></div>
-        <div class="doc-prev">📷<br><small style="font-size:9px">صورة شخصية</small></div>
-        <div class="doc-prev">🏍️<br><small style="font-size:9px">رخصة موتوسيكل</small></div>
-      </div></div>`;
-    document.getElementById('acc-btn').onclick=()=>admAccDrv(uid);
-    document.getElementById('rej-btn').onclick=()=>admRejDrv(uid);
+      ${u.status==='rejected'&&u.rejectReason?`<div class="info-row"><span class="il">سبب الرفض</span><span class="iv" style="color:var(--danger)">${esc(u.rejectReason)}</span></div>`:''}
+      <div style="margin:10px 0"><div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px">📄 المستندات (اضغط للتكبير):</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${docsHtml}</div></div>`;
+    const accBtn=document.getElementById('acc-btn'), rejBtn=document.getElementById('rej-btn');
+    accBtn.style.display = u.status==='pending'?'block':'none';
+    rejBtn.style.display = u.status==='pending'?'block':'none';
+    accBtn.onclick=()=>admAccDrv(uid);
+    rejBtn.onclick=()=>admRejDrv(uid);
     document.getElementById('drv-modal').classList.add('open');
   }catch(e){showToast('خطأ في تحميل البيانات','err');}
 }
+
+// ===== ADMIN: STORE MANAGEMENT SCREEN (بيانات المتجر + المنتجات) =====
+window.smCurrentStore = null;
+async function renderAdminStoresList(allStores){
+  if(!allStores.length){ document.getElementById('adm-stores-list').innerHTML='<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد تجار</p></div>'; return; }
+  const rows = await Promise.all(allStores.map(async m=>{
+    const mName = esc(m.storeName || m.name || '--');
+    let prodC=0, ordC=0, ratingC=0, ratingAvg=0;
+    try{
+      const [pSnap,oSnap,rSnap] = await Promise.all([
+        getDocs(query(collection(db,'products'),where('merchantId','==',m.id))),
+        getDocs(query(collection(db,'orders'),where('storeId','==',m.id))),
+        getDocs(query(collection(db,'ratings'),where('targetId','==',m.id),where('targetType','==','store')))
+      ]);
+      prodC=pSnap.size; ordC=oSnap.size; ratingC=rSnap.size;
+      if(ratingC){let sum=0;rSnap.forEach(d=>sum+=d.data().stars||0);ratingAvg=(sum/ratingC).toFixed(1);}
+    }catch(e){}
+    const createdStr = m.createdAt?.toDate ? m.createdAt.toDate().toLocaleDateString('ar-EG') : '--';
+    const statusBadge = m.status==='pending'?'<span class="p-badge">⏳ بانتظار</span>'
+      : m.status==='active'?'<span style="color:var(--ok);font-size:10px;font-weight:700">✅ نشط</span>'
+      : m.status==='paused'?'<span style="color:var(--warn);font-size:10px;font-weight:700">⏸️ متوقف</span>'
+      : m.status==='deleted'?'<span style="color:var(--danger);font-size:10px;font-weight:700">🗑️ محذوف</span>'
+      : '<span style="color:var(--danger);font-size:10px;font-weight:700">❌ مرفوض</span>';
+    const actionBtns = m.status==='pending'
+      ? `<button class="mb2 mb-acc" onclick="admAccStore('${m.id}')">قبول</button><button class="mb2 mb-rej" onclick="admRejStore('${m.id}')">رفض</button>`
+      : `<button class="mb2 mb-view" onclick="openStoreManage('${m.id}')">إدارة</button>${m.status==='active'?`<button class="mb2 mb-rej" onclick="smQuickPause('${m.id}')">إيقاف</button>`:m.status==='paused'?`<button class="mb2 mb-acc" onclick="smQuickActivate('${m.id}')">تفعيل</button>`:''}`;
+    return `<div class="drv-row2"><div class="drv-av2" style="background:#EFF6FF">🏬</div><div class="drv-info2"><strong>${mName}</strong><small>📱 ${esc(m.storePhone||m.phone)||'--'} | ${statusBadge}</small><br><small style="color:var(--mu);font-size:10px">📦 ${prodC} منتج • 🧾 ${ordC} طلب • ⭐ ${ratingAvg||0} (${ratingC}) • 📅 ${createdStr}</small></div><div class="drv-row2-acts">${actionBtns}</div></div>`;
+  }));
+  document.getElementById('adm-stores-list').innerHTML = rows.join('');
+}
+async function smQuickPause(uid){
+  if(!confirm('هل تريد إيقاف استقبال الطلبات لهذا المتجر مؤقتًا؟')) return;
+  try{ await updateDoc(doc(db,'stores',uid),{status:'paused',updatedAt:serverTimestamp()}); await updateDoc(doc(db,'users',uid),{status:'paused'}).catch(()=>{}); logAudit('إيقاف متجر مؤقتًا'); showToast('✅ تم الإيقاف','ok'); }catch(e){showToast('حدث خطأ','err');}
+}
+async function smQuickActivate(uid){
+  try{ await updateDoc(doc(db,'stores',uid),{status:'active',updatedAt:serverTimestamp()}); await updateDoc(doc(db,'users',uid),{status:'active'}).catch(()=>{}); logAudit('تفعيل متجر'); showToast('✅ تم التفعيل','ok'); }catch(e){showToast('حدث خطأ','err');}
+}
+async function openStoreManage(uid){
+  window.smCurrentStore = uid;
+  window.adminTargetStore = uid;
+  try{
+    const [sDoc,uDoc] = await Promise.all([getDoc(doc(db,'stores',uid)), getDoc(doc(db,'users',uid))]);
+    const s = sDoc.exists()?sDoc.data():{};
+    const u = uDoc.exists()?uDoc.data():{};
+    document.getElementById('sm-title').textContent = s.storeName||u.storeName||'إدارة المتجر';
+    document.getElementById('sm-name').value = s.storeName||u.storeName||'';
+    document.getElementById('sm-desc').value = s.description||'';
+    document.getElementById('sm-phone').value = s.storePhone||u.storePhone||'';
+    document.getElementById('sm-wa').value = s.whatsapp||'';
+    document.getElementById('sm-addr').value = s.address||u.address||'';
+    document.getElementById('sm-hours').value = s.hours||'';
+    document.getElementById('sm-minord').value = s.minOrder||'';
+    document.getElementById('sm-delfee').value = s.deliveryFee||'';
+    const logoBox=document.getElementById('sm-logo-box'); logoBox.style.backgroundImage = s.logoUrl?`url('${s.logoUrl}')`:'none'; logoBox.textContent = s.logoUrl?'':'🏪';
+    const coverBox=document.getElementById('sm-cover-box'); coverBox.style.backgroundImage = s.coverUrl?`url('${s.coverUrl}')`:'none'; coverBox.textContent = s.coverUrl?'':'🖼️ صورة الغلاف';
+    smSetOpen(s.isOpen!==false);
+    document.getElementById('screen-store-manage').style.display='block';
+    smTab('profile', document.querySelector('#screen-store-manage .adm-nb'));
+    smLoadProducts(uid);
+  }catch(e){ showToast('خطأ تحميل بيانات المتجر','err'); }
+}
+function closeStoreManage(){
+  document.getElementById('screen-store-manage').style.display='none';
+  window.smCurrentStore=null; window.adminTargetStore=null;
+}
+function smTab(tab,el){
+  document.querySelectorAll('#screen-store-manage .adm-nb').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('sm-profile').style.display = tab==='profile'?'block':'none';
+  document.getElementById('sm-products').style.display = tab==='products'?'block':'none';
+}
+function smSetOpen(isOpen){
+  window._smIsOpen = isOpen;
+  document.getElementById('sm-open-btn').classList.toggle('active', isOpen);
+  document.getElementById('sm-closed-btn').classList.toggle('active', !isOpen);
+}
+async function smSaveProfile(){
+  if(!window.smCurrentStore) return;
+  const uid = window.smCurrentStore;
+  const payload = {
+    storeName: document.getElementById('sm-name').value.trim(),
+    description: document.getElementById('sm-desc').value.trim(),
+    storePhone: document.getElementById('sm-phone').value.trim(),
+    whatsapp: document.getElementById('sm-wa').value.trim(),
+    address: document.getElementById('sm-addr').value.trim(),
+    hours: document.getElementById('sm-hours').value.trim(),
+    minOrder: parseFloat(document.getElementById('sm-minord').value)||0,
+    deliveryFee: parseFloat(document.getElementById('sm-delfee').value)||0,
+    isOpen: window._smIsOpen!==false,
+    updatedAt: serverTimestamp()
+  };
+  if(!payload.storeName){ showToast('اسم المتجر مطلوب','err'); return; }
+  try{
+    await updateDoc(doc(db,'stores',uid), payload);
+    await updateDoc(doc(db,'users',uid), {storeName:payload.storeName, storePhone:payload.storePhone, address:payload.address}).catch(()=>{});
+    logAudit('تعديل بيانات متجر', payload.storeName);
+    document.getElementById('sm-title').textContent = payload.storeName;
+    showToast('✅ تم حفظ بيانات المتجر','ok');
+  }catch(e){ showToast('حدث خطأ في الحفظ','err'); }
+}
+async function smUploadLogo(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=async()=>{
+    const file=inp.files[0]; if(!file||!window.smCurrentStore) return;
+    showToast('جارٍ رفع الشعار...','ok');
+    try{
+      const url=await secureCloudinaryUpload(file);
+      await updateDoc(doc(db,'stores',window.smCurrentStore),{logoUrl:url,updatedAt:serverTimestamp()});
+      document.getElementById('sm-logo-box').style.backgroundImage=`url('${url}')`;
+      document.getElementById('sm-logo-box').textContent='';
+      logAudit('تغيير شعار متجر');
+      showToast('✅ تم تحديث الشعار','ok');
+    }catch(e){ showToast('فشل رفع الصورة','err'); }
+  };
+  inp.click();
+}
+async function smUploadCover(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=async()=>{
+    const file=inp.files[0]; if(!file||!window.smCurrentStore) return;
+    showToast('جارٍ رفع الغلاف...','ok');
+    try{
+      const url=await secureCloudinaryUpload(file);
+      await updateDoc(doc(db,'stores',window.smCurrentStore),{coverUrl:url,updatedAt:serverTimestamp()});
+      document.getElementById('sm-cover-box').style.backgroundImage=`url('${url}')`;
+      document.getElementById('sm-cover-box').textContent='';
+      logAudit('تغيير صورة غلاف متجر');
+      showToast('✅ تم تحديث الغلاف','ok');
+    }catch(e){ showToast('فشل رفع الصورة','err'); }
+  };
+  inp.click();
+}
+async function smDeleteCover(){
+  if(!window.smCurrentStore) return;
+  try{
+    await updateDoc(doc(db,'stores',window.smCurrentStore),{coverUrl:'',updatedAt:serverTimestamp()});
+    document.getElementById('sm-cover-box').style.backgroundImage='none';
+    document.getElementById('sm-cover-box').textContent='🖼️ صورة الغلاف';
+    logAudit('حذف صورة غلاف متجر');
+    showToast('✅ تم حذف الغلاف','ok');
+  }catch(e){ showToast('حدث خطأ','err'); }
+}
+async function smSetAccountStatus(status){
+  if(!window.smCurrentStore) return;
+  if(status==='paused' && !confirm('هل تريد إيقاف استقبال الطلبات لهذا المتجر مؤقتًا؟')) return;
+  try{
+    await updateDoc(doc(db,'stores',window.smCurrentStore),{status: status==='paused'?'paused':'active', updatedAt:serverTimestamp()});
+    await updateDoc(doc(db,'users',window.smCurrentStore),{status: status==='paused'?'paused':'active'}).catch(()=>{});
+    logAudit(status==='paused'?'إيقاف متجر مؤقتًا':'تفعيل متجر');
+    showToast('✅ تم التحديث','ok');
+  }catch(e){ showToast('حدث خطأ','err'); }
+}
+async function smDeleteStore(){
+  if(!window.smCurrentStore) return;
+  if(!confirm('هل أنت متأكد من حذف هذا المتجر؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+  try{
+    await updateDoc(doc(db,'stores',window.smCurrentStore),{status:'deleted',updatedAt:serverTimestamp()});
+    await updateDoc(doc(db,'users',window.smCurrentStore),{status:'deleted'}).catch(()=>{});
+    logAudit('حذف متجر');
+    showToast('✅ تم حذف المتجر','ok');
+    closeStoreManage();
+  }catch(e){ showToast('حدث خطأ','err'); }
+}
+function smLoadProducts(uid){
+  const q=query(collection(db,'products'),where('merchantId','==',uid));
+  onSnapshot(q,snap=>{
+    if(snap.empty){document.getElementById('sm-prods-list').innerHTML='<div class="empty-state"><div class="ei">📦</div><p>لا توجد منتجات</p></div>';return;}
+    let html='';
+    snap.forEach(d=>{
+      const p={...d.data(),id:d.id};
+      html+=`<div style="background:#fff;border-radius:var(--r);padding:12px;margin-bottom:8px;box-shadow:var(--sh);border:1px solid var(--border);display:flex;gap:10px;align-items:center">
+        <div style="width:48px;height:48px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${p.icon||'📦'}</div>
+        <div style="flex:1"><strong style="font-size:13px;font-weight:800;display:block">${esc(p.name)}</strong><small style="color:var(--mu);font-size:11px">${esc(p.unit)}${p.stock!=null?' • الكمية: '+p.stock:''}</small>
+          <div style="font-size:14px;font-weight:900;color:var(--p);margin-top:3px">${p.price} ج</div>
+          <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
+            <button class="mb2 mb-view" onclick='openEditProd(${JSON.stringify(p).replace(/</g,"\\u003c")})'>✏️ تعديل</button>
+            <button class="mb2 ${p.available!==false?'mb-rej':'mb-acc'}" onclick="toggleProdAvail('${d.id}',${p.available!==false})">${p.available!==false?'⏸️ إيقاف':'▶️ تفعيل'}</button>
+            <button class="mb2 mb-rej" onclick="admDelProd('${d.id}','${escJs(p.name)}')">🗑️ حذف</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    document.getElementById('sm-prods-list').innerHTML=html;
+  });
+}
+function openEditProd(p){
+  document.getElementById('ep-id').value=p.id;
+  document.getElementById('ep-name').value=p.name||'';
+  document.getElementById('ep-price').value=p.price||'';
+  document.getElementById('ep-stock').value=p.stock??'';
+  document.getElementById('ep-unit').value=p.unit||'';
+  document.getElementById('ep-icon').value=p.icon||'📦';
+  document.getElementById('edit-prod-modal').classList.add('open');
+}
+async function saveEditProd(){
+  const id=document.getElementById('ep-id').value;
+  const name=document.getElementById('ep-name').value.trim();
+  const price=parseFloat(document.getElementById('ep-price').value)||0;
+  const stockRaw=document.getElementById('ep-stock').value;
+  const unit=document.getElementById('ep-unit').value.trim();
+  const icon=document.getElementById('ep-icon').value||'📦';
+  if(!id||!name||!price){ showToast('يرجى تعبئة الاسم والسعر','err'); return; }
+  try{
+    await updateDoc(doc(db,'products',id),{name,price,unit,icon,stock: stockRaw===''?null:parseInt(stockRaw), updatedAt:serverTimestamp()});
+    logAudit('تعديل منتج', name+' — سعر '+price+' ج');
+    closeModal('edit-prod-modal');
+    showToast('✅ تم حفظ المنتج','ok');
+  }catch(e){ showToast('حدث خطأ','err'); }
+}
+async function toggleProdAvail(id, current){
+  try{
+    await updateDoc(doc(db,'products',id),{available: !current, updatedAt:serverTimestamp()});
+    logAudit(current?'إيقاف منتج':'تفعيل منتج');
+    showToast('✅ تم التحديث','ok');
+  }catch(e){ showToast('حدث خطأ','err'); }
+}
+async function admDelProd(id, name){
+  if(!confirm('هل تريد حذف هذا المنتج؟')) return;
+  try{
+    await deleteDoc(doc(db,'products',id));
+    logAudit('حذف منتج', name||'');
+    showToast('✅ تم حذف المنتج','ok');
+  }catch(e){ showToast('حدث خطأ','err'); }
+}
+
+function filtOrds(st,btn){
+  document.querySelectorAll('#adm-orders .fc2').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#adm-all-ords .drv-row2').forEach(r=>r.style.display=(st==='all'||r.dataset.status===st)?'block':'none');
+}
+
 function admNav(page,el){
   document.querySelectorAll('.adm-nb').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');
-  ['dashboard','drivers','stores','orders','users','finance','cats','banners','coupons','map'].forEach(p=>{const e=document.getElementById('adm-'+p);if(e)e.style.display=p===page?'block':'none';});
+  ['dashboard','drivers','stores','orders','users','finance','cats','banners','coupons','map','audit'].forEach(p=>{const e=document.getElementById('adm-'+p);if(e)e.style.display=p===page?'block':'none';});
   if(page==='map'){setTimeout(()=>initAdminMap([]),200);}
+  if(page==='audit'){loadAuditLog();}
 }
 function filtDrvs(st,btn){document.querySelectorAll('.fc2').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('#adm-drvs-list .drv-row2').forEach(r=>r.style.display=(st==='all'||r.dataset.st===st)?'flex':'none');}
 async function saveComm(){
@@ -1515,226 +1853,4 @@ function editBanner(b) {
   document.getElementById('ab-id').value = b.id;
   document.getElementById('ab-tag').value = b.tag||'';
   document.getElementById('ab-title').value = b.title||'';
-  document.getElementById('ab-desc').value = b.description||'';
-  document.getElementById('ab-order').value = b.order??'';
-  document.getElementById('ab-start').value = b.startDate||'';
-  document.getElementById('ab-end').value = b.endDate||'';
-  document.getElementById('ab-imgurl').value = b.imageUrl||'';
-  const box = document.getElementById('ab-img-box');
-  if (b.imageUrl) { box.style.backgroundImage = `url('${b.imageUrl}')`; box.style.backgroundSize='cover'; box.innerHTML=''; }
-  document.getElementById('add-banner-modal').classList.add('open');
-}
-async function saveBanner() {
-  const id = document.getElementById('ab-id').value;
-  const title = document.getElementById('ab-title').value.trim();
-  if (!title) { showToast('اكتب عنوان البانر', 'err'); return; }
-  const data = {
-    title, tag: document.getElementById('ab-tag').value.trim(),
-    description: document.getElementById('ab-desc').value.trim(),
-    order: parseInt(document.getElementById('ab-order').value) || 0,
-    startDate: document.getElementById('ab-start').value || null,
-    endDate: document.getElementById('ab-end').value || null,
-    imageUrl: document.getElementById('ab-imgurl').value || null,
-    active: true
-  };
-  try {
-    if (id) await updateDoc(doc(db,'banners',id), data);
-    else await addDoc(collection(db,'banners'), { ...data, createdAt: serverTimestamp() });
-    showToast('✅ تم الحفظ', 'ok');
-    closeModal('add-banner-modal');
-  } catch(e) { showToast('حدث خطأ', 'err'); }
-}
-async function delBanner(id) {
-  try { await deleteDoc(doc(db,'banners',id)); showToast('🗑️ تم حذف البانر', 'ok'); }
-  catch(e) { showToast('حدث خطأ', 'err'); }
-}
-
-// ===== ADMIN: COUPON MANAGEMENT =====
-function renderAdminCoupons(items) {
-  const list = document.getElementById('adm-coupons-list');
-  if (!list) return;
-  if (!items.length) { list.innerHTML = '<div class="empty-state" style="padding:16px"><p style="font-size:12px">لا توجد قسائم بعد</p></div>'; return; }
-  list.innerHTML = items.map(c => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6">${esc(c.icon)||'🎟️'}</div><div class="drv-info2"><strong>${esc(c.title)} — ${esc(c.code)}</strong><small>${esc(c.badge)} | ترتيب: ${c.order??0}</small></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick='editCoupon(${JSON.stringify(c).replace(/</g,"\\u003c")})'>تعديل</button><button class="mb2 mb-rej" onclick="delCoupon('${c.id}')">حذف</button></div></div>`).join('');
-}
-function openAddCoupon() {
-  document.getElementById('coupon-modal-title').textContent = '➕ إضافة قسيمة';
-  ['ac2-id','ac2-code','ac2-badge','ac2-icon','ac2-title','ac2-desc','ac2-order','ac2-expiry'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('add-coupon-modal').classList.add('open');
-}
-function editCoupon(c) {
-  document.getElementById('coupon-modal-title').textContent = '✏️ تعديل قسيمة';
-  document.getElementById('ac2-id').value = c.id;
-  document.getElementById('ac2-code').value = c.code||'';
-  document.getElementById('ac2-badge').value = c.badge||'';
-  document.getElementById('ac2-icon').value = c.icon||'';
-  document.getElementById('ac2-title').value = c.title||'';
-  document.getElementById('ac2-desc').value = c.description||'';
-  document.getElementById('ac2-order').value = c.order??'';
-  document.getElementById('ac2-expiry').value = c.expiryDate||'';
-  document.getElementById('add-coupon-modal').classList.add('open');
-}
-async function saveCoupon() {
-  const id = document.getElementById('ac2-id').value;
-  const title = document.getElementById('ac2-title').value.trim();
-  const code = document.getElementById('ac2-code').value.trim().toUpperCase();
-  if (!title || !code) { showToast('اكتب العنوان والكود', 'err'); return; }
-  const data = {
-    title, code,
-    badge: document.getElementById('ac2-badge').value.trim(),
-    icon: document.getElementById('ac2-icon').value.trim(),
-    description: document.getElementById('ac2-desc').value.trim(),
-    order: parseInt(document.getElementById('ac2-order').value) || 0,
-    expiryDate: document.getElementById('ac2-expiry').value || null,
-    active: true
-  };
-  try {
-    if (id) await updateDoc(doc(db,'coupons',id), data);
-    else await addDoc(collection(db,'coupons'), { ...data, createdAt: serverTimestamp() });
-    showToast('✅ تم الحفظ', 'ok');
-    closeModal('add-coupon-modal');
-  } catch(e) { showToast('حدث خطأ', 'err'); }
-}
-async function delCoupon(id) {
-  try { await deleteDoc(doc(db,'coupons',id)); showToast('🗑️ تم حذف القسيمة', 'ok'); }
-  catch(e) { showToast('حدث خطأ', 'err'); }
-}
-
-// ===== JOIN MERCHANT =====
-function selMCat(btn){document.querySelectorAll('.cat-g-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');}
-async function submitMerchant(){
-  const name=document.getElementById('jm-name').value.trim();
-  const phone=document.getElementById('jm-phone').value.trim();
-  const addr=document.getElementById('jm-addr').value.trim();
-  if(!name||!phone){showToast('يرجى تعبئة اسم المتجر والهاتف','err');return;}
-  try{
-    await addDoc(collection(db,'merchant_requests'),{storeName:name,phone,address:addr,status:'pending',createdAt:serverTimestamp()});
-    showToast('✅ تم إرسال طلب الانضمام! سنتواصل خلال 24 ساعة','ok');
-    setTimeout(()=>showScreen('screen-entry'),2500);
-  }catch(e){showToast('✅ تم إرسال طلبك! سنتواصل معك','ok');setTimeout(()=>showScreen('screen-entry'),2000);}
-}
-
-// ===== ANY REQUEST =====
-function openAnyReq(){document.getElementById('any-req-modal').classList.add('open');}
-function quickReq(txt){document.getElementById('any-req-txt').value=txt;}
-async function sendAnyReq(){
-  const txt=document.getElementById('any-req-txt').value.trim();
-  if(!txt){showToast('يرجى كتابة طلبك','err');return;}
-  try{
-    await addDoc(collection(db,'any_requests'),{customerId:window.CU?.uid||'guest',customerName:window.CUD?.name||'عميل',request:txt,address:document.getElementById('any-req-addr').value,status:'new',createdAt:serverTimestamp()});
-    closeModal('any-req-modal');showToast('✅ تم إرسال طلبك! سيتواصل معك المندوب قريباً','ok');
-  }catch(e){closeModal('any-req-modal');showToast('✅ تم إرسال طلبك!','ok');}
-}
-
-// ===== HELPERS =====
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);if(id==='screen-driver-register')dregInit();}
-function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(type?' '+type:'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
-function showErr(msg){const e=document.getElementById('err-msg');e.textContent=msg;e.style.display='block';e.scrollIntoView({behavior:'smooth',block:'center'});}
-function setLoad(btnId,spId,on){const btn=document.getElementById(btnId);const sp=spId?document.getElementById(spId):null;if(btn)btn.disabled=on;if(sp)sp.style.display=on?'block':'none';}
-function callStore(num){window.location.href='tel:'+num;}
-function openWA(num,name){window.open('https://wa.me/'+num+'?text=أهلاً، أريد الطلب من '+name,'_blank');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-function openNotifs(){document.getElementById('notif-overlay').classList.add('open');}
-
-function filterProds(cat, btn) {
-  document.querySelectorAll('.pc-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderProds(cat);
-}
-
-// ===== PWA =====
-const mf={name:'منايف GO',short_name:'منايف GO',start_url:'/',display:'standalone',background_color:'#1A1A2E',theme_color:'#FF6B00',description:'توصيل سريع في المنايف',icons:[{src:'https://via.placeholder.com/192x192/FF6B00/FFFFFF?text=GO',sizes:'192x192',type:'image/png'},{src:'https://via.placeholder.com/512x512/FF6B00/FFFFFF?text=GO',sizes:'512x512',type:'image/png'}]};
-const mb=new Blob([JSON.stringify(mf)],{type:'application/json'});
-const manifestLink = document.getElementById('manifest-link');
-if(manifestLink) manifestLink.setAttribute('href',URL.createObjectURL(mb));
-if('serviceWorker' in navigator){const sw=`const C='mg-v1';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['/']))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;const sb=new Blob([sw],{type:'application/javascript'});navigator.serviceWorker.register(URL.createObjectURL(sb)).catch(()=>{});}
-
-// ===== EXPOSE TO WINDOW =====
-// app.js is loaded as an ES module, so top-level functions are NOT global by default.
-// index.html calls these via inline onclick="..." which only looks on `window`.
-// Without this block, every button in the app silently fails.
-Object.assign(window, {
-  acceptOrd, addCart, addNotif, admAccDrv, admAccStore, admNav, admRejDrv, admRejStore, admUpdOrd,
-  buildChart, callStore, chgQty, closeModal, custNav, delBanner, delCat, delCoupon, delProd,
-  doLogin, doLogout, doRegister, doSearch, drvNav, editBanner, editCat, editCoupon, filtDrvs,
-  filterCat, filterProds, getLocation, goCheckout, hideLoading, initAdminMap, initTrackMap,
-  listenNewOrders, loadAdminData, loadBanners, loadCategories, loadCoupons, loadCustomerData,
-  loadDriverData, loadDriverOrders, loadMerchantData, loadMerchantOrders, loadMerchantProds,
-  loadOrders, loadProducts, loadProductsByStore, loadStores, loginGoogle, openAddBanner,
-  openAddCat, openAddCoupon, openAddProd, openAnyReq, openCart, openDrvModal, openNotifs,
-  openTrack, openWA, pickEntryType, quickReq, renderAdminBanners, renderAdminCats,
-  renderAdminCoupons, renderProds, routeUser, saveBanner, saveCat, saveComm, saveCoupon,
-  saveProd, selMCat, selectRatingTarget, selectRole, sendAnyReq, setLoad, setStar,
-  showEmailOTP, showErr, showForgot, showScreen, showToast, startGPS,
-  startNotifListener, submitDrvReg, submitMerchant, submitRating, switchTab, syncToHubSpot,
-  toggleAgree, toggleDriverMap, toggleOnline, updOrdStatus, updOrdStatus2, updateCartUI,
-  updateEntryLabel, uploadBannerImg,
-  dregNext, dregBack, dregSetExp, dregGetLocation, dregSaveDraft, dregInit,
-  openTermsModal, closeTermsModal, agreeTermsModal, uploadDoc, removeUploadedDoc, zoomDoc, closeZoom
-});
-
-// ===== AUTH STATE LISTENER =====
-getRedirectResult(auth).catch(e => {
-  console.log('Redirect result error:', e);
-  if (e?.code && e.code !== 'auth/no-auth-event') {
-    setTimeout(() => showToast('خطأ Google: ' + e.code, 'err'), 1500);
-  }
-});
-
-if (isSignInWithEmailLink(auth, window.location.href)) {
-  let emailForLink = window.localStorage?.getItem('emailForSignIn');
-  if (!emailForLink) emailForLink = prompt('أدخل بريدك الإلكتروني لتأكيد الدخول:');
-  if (emailForLink) {
-    signInWithEmailLink(auth, emailForLink, window.location.href)
-      .then(() => {
-        window.localStorage?.removeItem('emailForSignIn');
-        window.history.replaceState({}, document.title, window.location.pathname);
-      })
-      .catch(e => {
-        showToast('فشل تسجيل الدخول بالرابط: ' + (e.message || e.code), 'err');
-        window.history.replaceState({}, document.title, window.location.pathname);
-      });
-  }
-}
-
-initOfflineHandling();
-
-onAuthStateChanged(auth, async user => {
-  if (user) {
-    window.CU = user;
-    try {
-      const ud = await getDoc(doc(db,'users',user.uid));
-      if (ud.exists()) {
-        window.CUD = ud.data();
-        hideLoading();
-        routeUser();
-      } else {
-        const role = window.selectedType || 'customer';
-        const data = {
-          name: user.displayName || 'مستخدم',
-          email: user.email || '',
-          phone: '',
-          role,
-          points: 0,
-          photoURL: user.photoURL || '',
-          status: role === 'driver' ? 'pending' : 'active',
-          createdAt: serverTimestamp()
-        };
-        await setDoc(doc(db,'users',user.uid), data);
-        window.CUD = data;
-        syncToHubSpot(data);
-        hideLoading();
-        if (role === 'driver') showScreen('screen-driver-register');
-        else routeUser();
-      }
-    } catch(e) {
-      console.error('Auth routing error:', e);
-      hideLoading();
-      showToast('حدث خطأ أثناء تحميل حسابك: ' + (e.message || e.code || e), 'err');
-      showScreen('screen-entry');
-    }
-  } else {
-    window.CU = null; window.CUD = null;
-    hideLoading();
-    showScreen('screen-entry');
-  }
-});
+  document.getElementById('ab-desc').value = b.descrip
