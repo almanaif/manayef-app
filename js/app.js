@@ -900,52 +900,316 @@ async function delProd(id){
   try{await deleteDoc(doc(db,'products',id));showToast('✅ تم حذف المنتج','ok');}catch(e){showToast('حدث خطأ','err');}
 }
 
-// ===== DRIVER REGISTER =====
+// ===== DRIVER REGISTRATION WIZARD =====
+window.dregStep = window.dregStep || 1;
+window.driverLoc = window.driverLoc || null;
 window.uploadedDocs = {};
-async function simUp(id,label){
-  const box = document.getElementById(id); if(!box) return;
-  const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = 'image/*';
-  inp.onchange = async () => {
-    const file = inp.files[0];
-    if (!file) return;
-    const maxSizeMB = 5;
-    if (file.size > maxSizeMB * 1024 * 1024) {
-      showToast(`حجم الصورة كبير جدًا (الحد الأقصى ${maxSizeMB} ميجا)`, 'err');
-      return;
-    }
-    box.innerHTML = `<div class="u-ic">⏳</div><p style="font-size:12px">جارٍ الرفع...</p>`;
-    try {
-      const url = await secureCloudinaryUpload(file);
-      window.uploadedDocs[id] = url;
-      box.classList.add('done');
-      box.innerHTML = `<div class="u-ic">✅</div><p style="color:var(--ok);font-weight:800;font-size:12px">${esc(label)}</p>`;
-    } catch(e) {
-      box.innerHTML = `<div class="u-ic">📷</div><p style="font-size:12px;color:#E11">فشل الرفع، اضغط للمحاولة تاني</p>`;
+
+// --- Draft autosave: لو المندوب قفل الصفحة، بياناته متحفوظة محليًا ومترجعله تاني ---
+const DREG_DRAFT_KEY = 'manayef_drv_draft';
+function dregSaveDraft(){
+  try{
+    const ids=['d-name','d-phone','d-dob','d-nid','d-emerg','d-addr','d-vtype','d-vmodel','d-vcolor','d-plate'];
+    const data={}; ids.forEach(id=>{const el=document.getElementById(id); if(el) data[id]=el.value;});
+    data.hasExp = window.driverHasExp!==false;
+    localStorage.setItem(DREG_DRAFT_KEY, JSON.stringify(data));
+  }catch(e){}
+  dregUpdateProgress();
+}
+function dregLoadDraft(){
+  try{
+    const raw=localStorage.getItem(DREG_DRAFT_KEY); if(!raw) return;
+    const data=JSON.parse(raw);
+    Object.keys(data).forEach(id=>{const el=document.getElementById(id); if(el && id!=='hasExp') el.value=data[id];});
+    if(data.hasExp===false) dregSetExp(false);
+  }catch(e){}
+}
+function dregClearDraft(){ try{localStorage.removeItem(DREG_DRAFT_KEY);}catch(e){} }
+
+function dregSetExp(val){
+  window.driverHasExp = val;
+  document.getElementById('exp-yes').classList.toggle('active', val);
+  document.getElementById('exp-no').classList.toggle('active', !val);
+  dregSaveDraft();
+}
+
+// --- تنقل بين الخطوات ---
+function dregShowFieldErr(id, msg){
+  const inp=document.getElementById(id), err=document.getElementById('err-'+id);
+  if(inp) inp.classList.add('err');
+  if(err){ err.textContent=msg; err.style.display='block'; }
+}
+function dregClearFieldErr(id){
+  const inp=document.getElementById(id), err=document.getElementById('err-'+id);
+  if(inp) inp.classList.remove('err');
+  if(err){ err.style.display='none'; }
+}
+function dregValidateStep1(){
+  let ok=true;
+  ['d-name','d-phone','d-dob','d-nid','d-emerg','d-addr','d-vtype'].forEach(dregClearFieldErr);
+  const name=document.getElementById('d-name').value.trim();
+  if(name.length<3){dregShowFieldErr('d-name','الاسم لازم يكون 3 أحرف على الأقل');ok=false;}
+  const phone=document.getElementById('d-phone').value.trim();
+  if(!/^01[0125][0-9]{8}$/.test(phone)){dregShowFieldErr('d-phone','رقم هاتف مصري غير صحيح (01xxxxxxxxx)');ok=false;}
+  const addr=document.getElementById('d-addr').value.trim();
+  if(!addr){dregShowFieldErr('d-addr','العنوان مطلوب');ok=false;}
+  const dob=document.getElementById('d-dob').value;
+  if(!dob){dregShowFieldErr('d-dob','تاريخ الميلاد مطلوب');ok=false;}
+  const nid=document.getElementById('d-nid').value.trim();
+  if(!/^[0-9]{14}$/.test(nid)){dregShowFieldErr('d-nid','الرقم القومي 14 رقم');ok=false;}
+  const emerg=document.getElementById('d-emerg').value.trim();
+  if(!/^01[0125][0-9]{8}$/.test(emerg)){dregShowFieldErr('d-emerg','رقم هاتف مصري غير صحيح');ok=false;}
+  const vtype=document.getElementById('d-vtype').value;
+  if(!vtype){dregShowFieldErr('d-vtype','اختر نوع المركبة');ok=false;}
+  return ok;
+}
+function dregValidateStep2(){
+  const required=['d-id1','d-id2','d-photo','d-license'];
+  const missing=required.filter(id=>!(window.uploadedDocs&&window.uploadedDocs[id]));
+  const err=document.getElementById('err-docs');
+  if(missing.length){ err.textContent='لازم ترفع كل المستندات الأربعة'; err.style.display='block'; return false; }
+  err.style.display='none'; return true;
+}
+function dregValidateStep3(){
+  if(!window.agreedTerms){
+    document.getElementById('err-agree').textContent='لازم توافق على البنود والشروط';
+    document.getElementById('err-agree').style.display='block';
+    return false;
+  }
+  document.getElementById('err-agree').style.display='none';
+  return true;
+}
+function dregGoto(step){
+  document.querySelectorAll('.dreg-step-pane').forEach(p=>p.classList.remove('active'));
+  const pane=document.getElementById('dreg-step-'+step);
+  if(pane) pane.classList.add('active');
+  window.dregStep=step;
+  [1,2,3,4].forEach(i=>{
+    const d=document.getElementById('dds-'+i);
+    if(!d)return;
+    d.classList.toggle('done', i<step);
+    d.classList.toggle('active', i===step);
+  });
+  if(step===3) dregRenderReview();
+  dregUpdateProgress();
+  window.scrollTo(0,0);
+}
+function dregNext(){
+  if(window.dregStep===1 && !dregValidateStep1()) return;
+  if(window.dregStep===2 && !dregValidateStep2()) return;
+  dregGoto(window.dregStep+1);
+}
+function dregBack(){
+  if(window.dregStep<=1){ showScreen('screen-entry'); return; }
+  dregGoto(window.dregStep-1);
+}
+function dregUpdateProgress(){
+  const ids=['d-name','d-phone','d-dob','d-nid','d-emerg','d-addr','d-vtype'];
+  let filled=0; ids.forEach(id=>{const el=document.getElementById(id); if(el&&el.value.trim())filled++;});
+  const docsCount=Object.keys(window.uploadedDocs||{}).length;
+  const total=ids.length+4+1;
+  let done=filled+Math.min(docsCount,4)+(window.agreedTerms?1:0);
+  const pct=Math.round(done/total*100);
+  const el=document.getElementById('dreg-pct');
+  if(el) el.textContent=`اكتمال التسجيل: ${pct}%`;
+}
+function dregRenderReview(){
+  const vtypeLabels={motorcycle:'موتوسيكل',tuktuk:'توك توك',bicycle:'عجلة',car:'عربية'};
+  const rows=[
+    ['الاسم', document.getElementById('d-name').value],
+    ['الهاتف', document.getElementById('d-phone').value],
+    ['تاريخ الميلاد', document.getElementById('d-dob').value],
+    ['الرقم القومي', document.getElementById('d-nid').value],
+    ['رقم الطوارئ', document.getElementById('d-emerg').value],
+    ['العنوان', document.getElementById('d-addr').value],
+    ['نوع المركبة', vtypeLabels[document.getElementById('d-vtype').value]||'--'],
+    ['موديل المركبة', document.getElementById('d-vmodel').value||'--'],
+    ['لون المركبة', document.getElementById('d-vcolor').value||'--'],
+    ['رقم اللوحة', document.getElementById('d-plate').value||'--'],
+    ['خبرة سابقة', window.driverHasExp!==false?'نعم':'لأ'],
+    ['الموقع', window.driverLoc?'✅ محدد':'غير محدد'],
+  ];
+  document.getElementById('dreg-review').innerHTML = rows.map(r=>`<div class="review-row"><span>${esc(r[0])}</span><span>${esc(r[1])}</span></div>`).join('');
+}
+
+// --- تحديد الموقع بخريطة ---
+async function dregGetLocation(){
+  if(!navigator.geolocation){ showToast('المتصفح مايدعمش تحديد الموقع','err'); return; }
+  const btn=document.getElementById('loc-btn');
+  btn.textContent='⏳ جارٍ تحديد موقعك...';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const {latitude,longitude}=pos.coords;
+    window.driverLoc={lat:latitude,lng:longitude};
+    btn.textContent='✅ تم تحديد موقعك';
+    btn.classList.add('got');
+    const wrap=document.getElementById('loc-map-wrap');
+    wrap.style.display='block';
+    setTimeout(()=>{
+      if(window._locMap){ window._locMap.remove(); }
+      window._locMap = L.map('loc-map',{zoomControl:false,attributionControl:false}).setView([latitude,longitude],16);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window._locMap);
+      L.marker([latitude,longitude]).addTo(window._locMap);
+    },100);
+    dregSaveDraft();
+  }, err=>{
+    btn.textContent='📍 تحديد موقعي الحالي';
+    showToast('مقدرناش نحدد موقعك، اتأكد إن إذن الموقع مفعّل','err');
+  }, {enableHighAccuracy:true, timeout:10000});
+}
+
+// --- مودال الشروط الكاملة ---
+const TERMS_FULL_TEXT = `1. المندوب مسؤول عن استلام وتسليم الطلبات في الوقت المحدد (خلال 30 دقيقة من وقت القبول تقريبًا).
+2. رسوم التوصيل تُحسب 15% من قيمة الطلب ويتحملها العميل، ويحصل عليها المندوب كاملة عند التسليم.
+3. المنصة غير مسؤولة عن أي تلف أو فقد للبضائع بعد استلامها من المتجر وحتى التسليم للعميل.
+4. يجب على المندوب الالتزام بقواعد المرور والسلامة العامة أثناء التوصيل.
+5. لا يجوز فتح أو التلاعب بمحتويات الطلب قبل تسليمه للعميل.
+6. يحق للإدارة إيقاف حساب أي مندوب في حالة وجود شكاوى متكررة أو مخالفة للبنود.
+7. بيانات المندوب الشخصية (الاسم، الهاتف، المستندات) تُستخدم فقط لأغراض التحقق والتواصل داخل التطبيق ولا تُشارك مع أي جهة خارجية.
+8. المندوب حر في اختيار أوقات عمله، ولا يوجد التزام بعدد ساعات معين.`;
+function openTermsModal(){
+  document.getElementById('terms-full-txt').textContent = TERMS_FULL_TEXT;
+  document.getElementById('terms-modal').classList.add('show');
+}
+function closeTermsModal(){ document.getElementById('terms-modal').classList.remove('show'); }
+function agreeTermsModal(){
+  closeTermsModal();
+  if(!window.agreedTerms) toggleAgree();
+}
+
+// --- ضغط الصورة قبل الرفع (تقليل الحجم مع الحفاظ على جودة مقبولة) ---
+function compressImage(file, maxDim=1280, quality=0.75){
+  return new Promise((resolve,reject)=>{
+    if(!file.type.startsWith('image/')){ resolve(file); return; }
+    const img=new Image();
+    const reader=new FileReader();
+    reader.onload=e=>{ img.src=e.target.result; };
+    reader.onerror=reject;
+    img.onload=()=>{
+      let {width,height}=img;
+      if(width>maxDim||height>maxDim){
+        if(width>height){ height=Math.round(height*maxDim/width); width=maxDim; }
+        else { width=Math.round(width*maxDim/height); height=maxDim; }
+      }
+      const canvas=document.createElement('canvas');
+      canvas.width=width; canvas.height=height;
+      canvas.getContext('2d').drawImage(img,0,0,width,height);
+      canvas.toBlob(blob=>{
+        if(!blob){ resolve(file); return; }
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/,'')+'.jpg', {type:'image/jpeg'}));
+      }, 'image/jpeg', quality);
+    };
+    img.onerror=()=>resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+// --- رفع مستند: ضغط -> رفع آمن -> معاينة مع تغيير/حذف/تكبير ---
+async function uploadDoc(id, label){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange=async()=>{
+    const file=inp.files[0]; if(!file) return;
+    if(!file.type.startsWith('image/')){ showToast('لازم ترفع صورة بس (JPG أو PNG)','err'); return; }
+    const maxSizeMB=8;
+    if(file.size>maxSizeMB*1024*1024){ showToast(`حجم الصورة كبير جدًا (الحد الأقصى ${maxSizeMB} ميجا)`,'err'); return; }
+    const wrap=document.getElementById(id+'-wrap');
+    wrap.innerHTML=`<div class="upload-box" id="${id}"><div class="u-ic">⏳</div><p style="font-size:12px">جارٍ ضغط ورفع الصورة...</p></div>`;
+    try{
+      const compressed = await compressImage(file);
+      const url = await secureCloudinaryUpload(compressed);
+      window.uploadedDocs[id]=url;
+      dregRenderDocPreview(id,label,url);
+      showToast(`✅ تم رفع ${label}`,'ok');
+      dregUpdateProgress();
+    }catch(e){
+      wrap.innerHTML=`<div class="upload-box" onclick="uploadDoc('${id}','${escJs(label)}')" id="${id}"><div class="u-ic">📷</div><p style="font-size:12px;color:#E11">فشل الرفع، اضغط للمحاولة تاني</p></div>`;
       showToast('فشل رفع الصورة، حاول تاني','err');
     }
   };
   inp.click();
 }
+function dregRenderDocPreview(id,label,url){
+  const wrap=document.getElementById(id+'-wrap');
+  wrap.innerHTML = `<div class="doc-preview">
+    <img src="${esc(url)}" alt="${esc(label)}">
+    <div class="doc-preview-acts">
+      <button onclick="zoomDoc('${escJs(url)}')">🔍 تكبير</button>
+      <button onclick="uploadDoc('${escJs(id)}','${escJs(label)}')">🔄 تغيير</button>
+      <button onclick="deleteDoc('${escJs(id)}','${escJs(label)}')">🗑️ حذف</button>
+    </div>
+  </div>
+  <p style="text-align:center;font-size:11px;color:var(--ok);font-weight:800;margin-bottom:8px">✅ ${esc(label)}</p>`;
+}
+function deleteDoc(id,label){
+  delete window.uploadedDocs[id];
+  const wrap=document.getElementById(id+'-wrap');
+  wrap.innerHTML=`<div class="upload-box" onclick="uploadDoc('${escJs(id)}','${escJs(label)}')" id="${id}"><span class="doc-help" onclick="event.stopPropagation();showToast('لازم تكون الصورة واضحة وكل البيانات ظاهرة')">؟</span><div class="u-ic">📷</div><p>${esc(label)}</p></div>`;
+  dregUpdateProgress();
+}
+function zoomDoc(url){
+  document.getElementById('zoom-img').src=url;
+  document.getElementById('zoom-ov').classList.add('show');
+}
+function closeZoom(){ document.getElementById('zoom-ov').classList.remove('show'); }
 
-function toggleAgree(el){window.agreedTerms=!window.agreedTerms;const b=document.getElementById('agree-box');b.style.background=window.agreedTerms?'var(--ok)':'#fff';b.style.borderColor=window.agreedTerms?'var(--ok)':'var(--border)';b.innerHTML=window.agreedTerms?'<span style="color:#fff;font-size:12px">✓</span>':'';}
+function toggleAgree(el){
+  window.agreedTerms=!window.agreedTerms;
+  const b=document.getElementById('agree-box');
+  b.style.background=window.agreedTerms?'var(--ok)':'#fff';
+  b.style.borderColor=window.agreedTerms?'var(--ok)':'var(--border)';
+  b.innerHTML=window.agreedTerms?'<span style="color:#fff;font-size:12px">✓</span>':'';
+  dregUpdateProgress();
+}
 
 async function submitDrvReg(){
-  const n=document.getElementById('d-name').value.trim();
-  const p=document.getElementById('d-phone').value.trim();
-  const a=document.getElementById('d-addr').value.trim();
-  if(!n||!p||!a){showToast('يرجى تعبئة جميع البيانات','err');return;}
-  if(!window.agreedTerms){showToast('يرجى الموافقة على البنود','err');return;}
-  if(!window.CU)return;
+  if(!dregValidateStep3()) return;
+  if(!window.CU){ showToast('حصل خطأ، سجل دخول تاني','err'); return; }
   setLoad('dreg-btn','dreg-sp',true);
+  document.getElementById('dreg-btn').disabled=true;
   try{
-    await updateDoc(doc(db,'users',window.CU.uid),{fullName:n,phone:p,address:a,status:'pending',docsSubmitted:true,docs:window.uploadedDocs||{},updatedAt:serverTimestamp()});
+    const payload={
+      fullName: document.getElementById('d-name').value.trim(),
+      phone: document.getElementById('d-phone').value.trim(),
+      dob: document.getElementById('d-dob').value,
+      nationalId: document.getElementById('d-nid').value.trim(),
+      emergencyPhone: document.getElementById('d-emerg').value.trim(),
+      address: document.getElementById('d-addr').value.trim(),
+      vehicleType: document.getElementById('d-vtype').value,
+      vehicleModel: document.getElementById('d-vmodel').value.trim(),
+      vehicleColor: document.getElementById('d-vcolor').value.trim(),
+      plateNumber: document.getElementById('d-plate').value.trim(),
+      hasExperience: window.driverHasExp!==false,
+      location: window.driverLoc||null,
+      status:'pending', docsSubmitted:true, docs:window.uploadedDocs||{},
+      updatedAt: serverTimestamp()
+    };
+    await updateDoc(doc(db,'users',window.CU.uid), payload);
+    dregClearDraft();
     document.getElementById('dreg-form').style.display='none';
+    document.querySelector('.dreg-hdr').style.display='none';
     document.getElementById('dreg-pending').style.display='block';
+    document.getElementById('dreg-reqid').textContent = '#'+window.CU.uid.slice(-6).toUpperCase();
     showToast('✅ تم إرسال طلبك!','ok');
-  }catch(e){showToast('حدث خطأ','err');}
-  finally{setLoad('dreg-btn','dreg-sp',false);}
+  }catch(e){ showToast('حدث خطأ، حاول تاني','err'); }
+  finally{ setLoad('dreg-btn','dreg-sp',false); document.getElementById('dreg-btn').disabled=false; }
+}
+
+// عند فتح شاشة التسجيل، رجّع أي بيانات محفوظة واعرض الخطوة الأولى
+function dregInit(){
+  if(window.CUD?.status==='pending' && window.CUD?.docsSubmitted){
+    document.getElementById('dreg-form').style.display='none';
+    document.querySelector('.dreg-hdr').style.display='none';
+    document.getElementById('dreg-pending').style.display='block';
+    document.getElementById('dreg-reqid').textContent = '#'+(window.CU?.uid||'').slice(-6).toUpperCase();
+    return;
+  }
+  window.dregStep=1; window.uploadedDocs={}; window.agreedTerms=false; window.driverLoc=null; window.driverHasExp=true;
+  document.getElementById('dreg-form').style.display='block';
+  document.querySelector('.dreg-hdr').style.display='block';
+  document.getElementById('dreg-pending').style.display='none';
+  dregGoto(1);
+  dregLoadDraft();
+  dregUpdateProgress();
 }
 
 // ===== ADMIN FUNCTIONS =====
@@ -1233,7 +1497,7 @@ async function sendAnyReq(){
 }
 
 // ===== HELPERS =====
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);if(id==='screen-driver-register')dregInit();}
 function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(type?' '+type:'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 function showErr(msg){const e=document.getElementById('err-msg');e.textContent=msg;e.style.display='block';e.scrollIntoView({behavior:'smooth',block:'center'});}
 function setLoad(btnId,spId,on){const btn=document.getElementById(btnId);const sp=spId?document.getElementById(spId):null;if(btn)btn.disabled=on;if(sp)sp.style.display=on?'block':'none';}
@@ -1271,10 +1535,12 @@ Object.assign(window, {
   openTrack, openWA, pickEntryType, quickReq, renderAdminBanners, renderAdminCats,
   renderAdminCoupons, renderProds, routeUser, saveBanner, saveCat, saveComm, saveCoupon,
   saveProd, selMCat, selectRatingTarget, selectRole, sendAnyReq, setLoad, setStar,
-  showEmailOTP, showErr, showForgot, showScreen, showToast, simUp, startGPS,
+  showEmailOTP, showErr, showForgot, showScreen, showToast, startGPS,
   startNotifListener, submitDrvReg, submitMerchant, submitRating, switchTab, syncToHubSpot,
   toggleAgree, toggleDriverMap, toggleOnline, updOrdStatus, updOrdStatus2, updateCartUI,
-  updateEntryLabel, uploadBannerImg
+  updateEntryLabel, uploadBannerImg,
+  dregNext, dregBack, dregSetExp, dregGetLocation, dregSaveDraft, dregInit,
+  openTermsModal, closeTermsModal, agreeTermsModal, uploadDoc, deleteDoc, zoomDoc, closeZoom
 });
 
 // ===== AUTH STATE LISTENER =====
