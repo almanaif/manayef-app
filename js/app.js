@@ -23,6 +23,19 @@ function clearAllListeners() {
   if (typeof categoriesUnsub !== 'undefined') categoriesUnsub = null;
   if (typeof notifListenerStarted !== 'undefined') notifListenerStarted = false;
   if (typeof settingsUnsub !== 'undefined') settingsUnsub = null;
+  if (typeof storesUnsub !== 'undefined') storesUnsub = null;
+  if (typeof ordersUnsub !== 'undefined') ordersUnsub = null;
+  if (typeof productsByStoreUnsub !== 'undefined') productsByStoreUnsub = null;
+  if (typeof trackUnsub !== 'undefined') trackUnsub = null;
+  if (typeof trackDriverUnsub !== 'undefined') trackDriverUnsub = null;
+  if (typeof newOrdersUnsub !== 'undefined') newOrdersUnsub = null;
+  if (typeof driverOrdersUnsub !== 'undefined') driverOrdersUnsub = null;
+  if (typeof merchantOrdersUnsub !== 'undefined') merchantOrdersUnsub = null;
+  if (typeof merchantProdsUnsub !== 'undefined') merchantProdsUnsub = null;
+  if (typeof adminOrdersUnsub !== 'undefined') adminOrdersUnsub = null;
+  if (typeof adminUsersUnsub !== 'undefined') adminUsersUnsub = null;
+  if (typeof auditLogUnsub !== 'undefined') auditLogUnsub = null;
+  if (typeof smProdsUnsub !== 'undefined') smProdsUnsub = null;
 }
 
 // ===== ORDER STATUS CONSTANTS =====
@@ -164,10 +177,12 @@ function loadCategories() {
 // جديد: كان بيقرا من /users فين role=='merchant' وده كان بيسرّب بيانات التاجر الخاصة
 // (docs/ownerPhone/email) لأي حد مسجل دخول. دلوقتي بيقرا من /stores اللي فيها بس
 // البيانات العامة الآمنة للعرض.
+let storesUnsub = null;
 function loadStores() {
   if (!window.CU) return;
+  if (storesUnsub) return;
   const q = query(collection(db,'stores'), where('status','==','active'));
-  onSnapshot(q, snap => {
+  storesUnsub = onSnapshot(q, snap => {
     const list = document.getElementById('stores-list');
     if (snap.empty) {
       list.innerHTML = '<div class="empty-state" style="padding:32px 20px;color:#6B7280"><div style="font-size:44px;margin-bottom:12px">🏪</div><p style="font-size:13px;font-weight:600">لا توجد متاجر متاحة حالياً</p><small style="font-size:11px;margin-top:4px;display:block">سيتم إضافة متاجر قريباً</small></div>';
@@ -189,7 +204,7 @@ function loadStores() {
           <div class="store-acts">
             <button class="sa-btn sa-call" onclick="event.stopPropagation();callStore('${escJs(sPhone)}')">📞 اتصال</button>
             <button class="sa-btn sa-wa" onclick="event.stopPropagation();openWA('${escJs(sPhone)}','${escJs(sName)}')">💬 واتساب</button>
-            <button class="sa-btn sa-order" onclick="showScreen('screen-store');loadProductsByStore('${d.id}','${escJs(sName)}')">🛒 اطلب</button>
+            <button class="sa-btn sa-order" onclick="showScreen('screen-store');loadProductsByStore('${d.id}','${escJs(sName)}','${escJs(sPhone)}')">🛒 اطلب</button>
           </div>
         </div>
       </div>`;
@@ -199,9 +214,15 @@ function loadStores() {
 }
 
 // ===== LOAD PRODUCTS BY STORE =====
-function loadProductsByStore(storeId, storeName) {
+let productsByStoreUnsub = null;
+function loadProductsByStore(storeId, storeName, storePhone) {
+  window.currentStoreName = storeName || 'متجر';
+  window.currentStorePhone = storePhone || '';
+  const nameEl = document.getElementById('store-detail-name');
+  if (nameEl) nameEl.textContent = window.currentStoreName;
+  if (productsByStoreUnsub) { try { productsByStoreUnsub(); } catch(e){} productsByStoreUnsub = null; }
   const q = query(collection(db,'products'), where('merchantId','==',storeId), where('available','==',true));
-  onSnapshot(q, snap => {
+  productsByStoreUnsub = onSnapshot(q, snap => {
     PRODS = snap.docs.map(d => {
       const p = d.data();
       return { id:d.id, name:p.name, unit:p.unit, price:p.price, icon:p.icon||'🛒', cat:p.cat||'other',
@@ -275,6 +296,39 @@ function chgQty(id,d) {
   if (item.qty <= 0) window.cart = window.cart.filter(x=>x.id!==id);
   updateCartUI(); renderProds('all');
 }
+function removeCartItem(id) {
+  window.cart = window.cart.filter(x=>x.id!==id);
+  updateCartUI(); renderProds('all');
+}
+function renderCartScreen() {
+  const list = document.getElementById('cart-items-list');
+  const lbl = document.getElementById('cart-item-count-lbl');
+  const barTotal = document.getElementById('cart-total-full');
+  const bar = document.getElementById('cart-bar-screen');
+  if (!list) return;
+  const count = window.cart.reduce((a,c)=>a+c.qty,0);
+  const total = window.cart.reduce((a,c)=>a+c.price*c.qty,0);
+  if (lbl) lbl.textContent = count ? count+' عنصر' : 'السلة فارغة';
+  if (barTotal) barTotal.textContent = total+' ج';
+  if (bar) bar.style.display = count>0 ? 'block' : 'none';
+  if (!window.cart.length) {
+    list.innerHTML = '<div class="empty-state"><div class="ei">🛒</div><p>السلة فارغة</p><small>أضف منتجات من أي متجر</small></div>';
+    return;
+  }
+  list.innerHTML = window.cart.map(c => `
+    <div style="background:#fff;border-radius:var(--r);padding:12px;margin-bottom:10px;box-shadow:var(--sh);border:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <div style="font-size:30px">${esc(c.icon)||'🛒'}</div>
+      <div style="flex:1;min-width:0">
+        <h4 style="font-size:13px;font-weight:800;margin-bottom:2px">${esc(c.name)}</h4>
+        <div style="font-size:11px;color:var(--mu)">${esc(c.storeName)||''}</div>
+        <div style="font-size:13px;font-weight:900;color:var(--p);margin-top:4px">${c.price} ج</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div class="qty-ctrl"><button class="qty-btn" onclick="chgQty('${c.id}',-1)">−</button><span class="qty-num">${c.qty}</span><button class="qty-btn" onclick="chgQty('${c.id}',1)">+</button></div>
+        <button onclick="removeCartItem('${c.id}')" style="background:none;border:none;color:var(--danger);font-size:11px;cursor:pointer">🗑️ حذف</button>
+      </div>
+    </div>`).join('');
+}
 function updateCartUI() {
   const count = window.cart.reduce((a,c)=>a+c.qty,0);
   const total = window.cart.reduce((a,c)=>a+c.price*c.qty,0);
@@ -282,9 +336,13 @@ function updateCartUI() {
   const cs = document.getElementById('cart-count-s'); if(cs) cs.textContent=count;
   const ts = document.getElementById('cart-total-s'); if(ts) ts.textContent=total+' ج';
   const bar = document.getElementById('cart-bar-store'); if(bar) bar.style.display=count>0?'block':'none';
+  if (document.getElementById('screen-cart')?.classList.contains('active')) renderCartScreen();
 }
 function openCart() {
-  showToast('🛒 السلة: '+(window.cart.length?window.cart.map(c=>c.name+' x'+c.qty).join('، '):'فارغة'));
+  const active = document.querySelector('.screen.active');
+  if (active && active.id !== 'screen-cart') window.cartReturnScreen = active.id;
+  showScreen('screen-cart');
+  renderCartScreen();
 }
 
 // ===== CHECKOUT =====
@@ -359,11 +417,13 @@ function loadCustomerData() {
   loadStores();
 }
 
+let ordersUnsub = null;
 function loadOrders() {
   if (!window.CU) return;
+  if (ordersUnsub) return;
   try {
     const q = query(collection(db,'orders'), where('customerId','==',window.CU.uid), orderBy('createdAt','desc'), limit(10));
-    onSnapshot(q, snap => {
+    ordersUnsub = onSnapshot(q, snap => {
       const list = document.getElementById('orders-list');
       if (snap.empty) { list.innerHTML = '<div class="empty-state"><div class="ei">📦</div><p>لا توجد طلبات</p><small>اطلب من أي متجر</small></div>'; return; }
       let html = '';
@@ -402,10 +462,12 @@ function custNav(tab, el) {
 }
 
 // ===== ORDER TRACKING =====
+let trackUnsub = null;
 function openTrack(ordId) {
   showScreen('screen-track');
+  if (trackUnsub) { try { trackUnsub(); } catch(e){} trackUnsub = null; }
   document.getElementById('track-order-id').textContent = '#' + ordId.slice(-6).toUpperCase();
-  onSnapshot(doc(db,'orders',ordId), snap => {
+  trackUnsub = onSnapshot(doc(db,'orders',ordId), snap => {
     if (!snap.exists()) return;
     const o = {...snap.data(), id:snap.id};
     window._currentTrackOrd = o;
@@ -435,6 +497,7 @@ function openTrack(ordId) {
 }
 
 // ===== MAPS =====
+let trackDriverUnsub = null;
 function initTrackMap(ordData) {
   if (window.trackMap) { window.trackMap.remove(); window.trackMap = null; }
   window.driverMarker = null; window.customerMarker = null; // كانت بتفضل مشيرة لماركرز على خريطة اتشالت
@@ -447,8 +510,9 @@ function initTrackMap(ordData) {
     const custIcon = L.divIcon({html:'<div style="font-size:24px;line-height:1">📍</div>',className:'',iconSize:[30,30]});
     window.customerMarker = L.marker([window.userLat, window.userLng], {icon:custIcon}).addTo(window.trackMap);
   }
+  if (trackDriverUnsub) { try { trackDriverUnsub(); } catch(e){} trackDriverUnsub = null; }
   if (ordData?.driverId) {
-    onSnapshot(doc(db,'users',ordData.driverId), snap => {
+    trackDriverUnsub = onSnapshot(doc(db,'users',ordData.driverId), snap => {
       const d = snap.data();
       if (d?.lat && d?.lng) {
         if (!window.driverMarker) {
@@ -798,10 +862,12 @@ function loadDriverData() {
   listenNewOrders();
 }
 
+let newOrdersUnsub = null;
 function listenNewOrders() {
   if (!window.CU) return;
+  if (newOrdersUnsub) return;
   const q = query(collection(db,'orders'), where('status','in',['new','accepted','preparing','ready']), where('driverId','==',null));
-  onSnapshot(q, snap => {
+  newOrdersUnsub = onSnapshot(q, snap => {
     if (!snap.empty && window.onlineStatus) {
       const ord = snap.docs[0]; const o = ord.data();
       document.getElementById('new-ord-banner').style.display='flex';
@@ -815,10 +881,12 @@ function listenNewOrders() {
   });
 }
 
+let driverOrdersUnsub = null;
 function loadDriverOrders() {
   if (!window.CU) return;
+  if (driverOrdersUnsub) return;
   const q = query(collection(db,'orders'), where('driverId','==',window.CU.uid), orderBy('createdAt','desc'), limit(20));
-  onSnapshot(q, snap => {
+  driverOrdersUnsub = onSnapshot(q, snap => {
     const list = document.getElementById('drv-ords-list');
     const today = new Date().toDateString();
     let tOrd=0, tEarn=0, wOrd=0, wEarn=0;
@@ -927,10 +995,12 @@ function loadMerchantData() {
   loadMerchantProds();
 }
 
+let merchantOrdersUnsub = null;
 function loadMerchantOrders() {
   if (!window.CU) return;
+  if (merchantOrdersUnsub) return;
   const q = query(collection(db,'orders'), where('storeId','==',window.CU.uid), orderBy('createdAt','desc'), limit(20));
-  onSnapshot(q, snap => {
+  merchantOrdersUnsub = onSnapshot(q, snap => {
     const today = new Date().toDateString(); let tOrd=0, tRev=0;
     if (snap.empty) { document.getElementById('merch-ords-list').innerHTML='<div class="empty-state"><div class="ei">📦</div><p>لا توجد طلبات بعد</p></div>'; return; }
     let html='';
@@ -960,10 +1030,12 @@ async function updOrdStatus2(id,status) {
   catch(e){ showToast('حدث خطأ','err'); }
 }
 
+let merchantProdsUnsub = null;
 function loadMerchantProds() {
   if(!window.CU)return;
+  if(merchantProdsUnsub)return;
   const q=query(collection(db,'products'),where('merchantId','==',window.CU.uid));
-  onSnapshot(q,snap=>{
+  merchantProdsUnsub=onSnapshot(q,snap=>{
     document.getElementById('m-prods').textContent=snap.size;
     if(snap.empty){document.getElementById('merch-prods-list').innerHTML='<div class="empty-state"><div class="ei">📦</div><p>لا توجد منتجات</p><small>اضغط "إضافة منتج"</small></div>';return;}
     let html='';
@@ -1355,8 +1427,10 @@ function dregRestart(){
 }
 
 // ===== ADMIN FUNCTIONS =====
+let adminOrdersUnsub = null, adminUsersUnsub = null;
 async function loadAdminData() {
-  onSnapshot(collection(db,'orders'), snap => {
+  if (adminOrdersUnsub) return;
+  adminOrdersUnsub = onSnapshot(collection(db,'orders'), snap => {
     const today=new Date().toDateString();let tO=0,tR=0,allR=0,allC=0;
     snap.forEach(d=>{const o=d.data();const dt=o.createdAt?.toDate?o.createdAt.toDate():new Date();allR+=o.total||0;allC+=o.commission||0;if(dt.toDateString()===today){tO++;tR+=o.total||0;}});
     document.getElementById('adm-t-ords').textContent=tO;
@@ -1389,7 +1463,8 @@ async function loadAdminData() {
     const allRev2=document.getElementById('adm-t-allrev'); if(allRev2) allRev2.textContent=allR+' ج';
   });
 
-  onSnapshot(collection(db,'users'), snap=>{
+  if (adminUsersUnsub) return;
+  adminUsersUnsub = onSnapshot(collection(db,'users'), snap=>{
     let cust=0,drvs=0,pendDrvs=[];const allDrvs=[];const allStores=[];
     snap.forEach(d=>{const u={...d.data(),id:d.id};if(u.role==='customer')cust++;if(u.role==='driver'){drvs++;if(u.status==='pending')pendDrvs.push(u);allDrvs.push(u);}if(u.role==='merchant')allStores.push(u);});
     document.getElementById('adm-t-users').textContent=cust;
@@ -1427,9 +1502,11 @@ async function logAudit(action, details){
     });
   }catch(e){}
 }
+let auditLogUnsub = null;
 function loadAuditLog(){
+  if (auditLogUnsub) return;
   const q=query(collection(db,'auditLog'),orderBy('createdAt','desc'),limit(80));
-  onSnapshot(q,snap=>{
+  auditLogUnsub=onSnapshot(q,snap=>{
     let html='';
     snap.forEach(d=>{
       const a=d.data();
@@ -1688,9 +1765,11 @@ async function smDeleteStore(){
     closeStoreManage();
   }catch(e){ showToast('حدث خطأ','err'); }
 }
+let smProdsUnsub = null;
 function smLoadProducts(uid){
+  if (smProdsUnsub) { try { smProdsUnsub(); } catch(e){} smProdsUnsub = null; }
   const q=query(collection(db,'products'),where('merchantId','==',uid));
-  onSnapshot(q,snap=>{
+  smProdsUnsub=onSnapshot(q,snap=>{
     if(snap.empty){document.getElementById('sm-prods-list').innerHTML='<div class="empty-state"><div class="ei">📦</div><p>لا توجد منتجات</p></div>';return;}
     let html='';
     snap.forEach(d=>{
@@ -1778,79 +1857,4 @@ function renderAdminCats(items) {
   const list = document.getElementById('adm-cats-list');
   if (!list) return;
   if (!items.length) { list.innerHTML = '<div class="empty-state" style="padding:16px"><p style="font-size:12px">لا توجد أقسام بعد</p></div>'; return; }
-  list.innerHTML = items.map(c => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6">${esc(c.icon)||'🗂️'}</div><div class="drv-info2"><strong>${esc(c.label)}</strong><small>ترتيب: ${c.order??0}</small></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick="editCat('${c.id}','${escJs(c.label)}','${escJs(c.icon)}',${c.order??0})">تعديل</button><button class="mb2 mb-rej" onclick="delCat('${c.id}')">حذف</button></div></div>`).join('');
-}
-function openAddCat() {
-  document.getElementById('cat-modal-title').textContent = '➕ إضافة قسم';
-  document.getElementById('ac-id').value = '';
-  document.getElementById('ac-label').value = '';
-  document.getElementById('ac-icon').value = '';
-  document.getElementById('ac-order').value = '';
-  document.getElementById('add-cat-modal').classList.add('open');
-}
-function editCat(id, label, icon, order) {
-  document.getElementById('cat-modal-title').textContent = '✏️ تعديل قسم';
-  document.getElementById('ac-id').value = id;
-  document.getElementById('ac-label').value = label;
-  document.getElementById('ac-icon').value = icon;
-  document.getElementById('ac-order').value = order;
-  document.getElementById('add-cat-modal').classList.add('open');
-}
-async function saveCat() {
-  const id = document.getElementById('ac-id').value;
-  const label = document.getElementById('ac-label').value.trim();
-  const icon = document.getElementById('ac-icon').value.trim();
-  const order = parseInt(document.getElementById('ac-order').value) || 0;
-  if (!label) { showToast('اكتب اسم القسم', 'err'); return; }
-  try {
-    if (id) await updateDoc(doc(db,'categories',id), { label, icon, order });
-    else await addDoc(collection(db,'categories'), { label, icon, order, createdAt: serverTimestamp() });
-    showToast('✅ تم الحفظ', 'ok');
-    closeModal('add-cat-modal');
-  } catch(e) { showToast('حدث خطأ', 'err'); }
-}
-async function delCat(id) {
-  try { await deleteDoc(doc(db,'categories',id)); showToast('🗑️ تم حذف القسم', 'ok'); }
-  catch(e) { showToast('حدث خطأ', 'err'); }
-}
-
-// ===== ADMIN: BANNER MANAGEMENT =====
-function renderAdminBanners(items) {
-  const list = document.getElementById('adm-banners-list');
-  if (!list) return;
-  if (!items.length) { list.innerHTML = '<div class="empty-state" style="padding:16px"><p style="font-size:12px">لا توجد بانرات بعد</p></div>'; return; }
-  list.innerHTML = items.map(b => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6;background-image:url('${esc(b.imageUrl)}');background-size:cover">${b.imageUrl?'':'🖼️'}</div><div class="drv-info2"><strong>${esc(b.title)}</strong><small>ترتيب: ${b.order??0}</small></div><div class="drv-row2-acts"><button class="mb2 mb-view" onclick='editBanner(${JSON.stringify(b).replace(/</g,"\\u003c")})'>تعديل</button><button class="mb2 mb-rej" onclick="delBanner('${b.id}')">حذف</button></div></div>`).join('');
-}
-async function uploadBannerImg() {
-  const box = document.getElementById('ab-img-box');
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = 'image/*';
-  inp.onchange = async () => {
-    const file = inp.files[0]; if (!file) return;
-    if (file.size > 5*1024*1024) { showToast('حجم الصورة كبير جدًا (الحد الأقصى 5 ميجا)','err'); return; }
-    box.innerHTML = `<div class="u-ic">⏳</div><p style="font-size:12px">جارٍ الرفع...</p>`;
-    try {
-      const url = await secureCloudinaryUpload(file);
-      document.getElementById('ab-imgurl').value = url;
-      box.style.backgroundImage = `url('${url}')`;
-      box.style.backgroundSize = 'cover';
-      box.innerHTML = `<div class="u-ic">✅</div><p style="font-size:12px;color:var(--ok)">تم رفع الصورة</p>`;
-    } catch(e) {
-      box.innerHTML = `<div class="u-ic">📷</div><p style="font-size:12px;color:#E11">فشل الرفع، اضغط للمحاولة تاني</p>`;
-    }
-  };
-  inp.click();
-}
-function openAddBanner() {
-  document.getElementById('banner-modal-title').textContent = '➕ إضافة بانر';
-  ['ab-id','ab-tag','ab-title','ab-desc','ab-order','ab-start','ab-end','ab-imgurl'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ab-img-box').innerHTML = `<div class="u-ic">📷</div><p style="font-size:12px">اضغط لرفع صورة</p>`;
-  document.getElementById('ab-img-box').style.backgroundImage = '';
-  document.getElementById('add-banner-modal').classList.add('open');
-}
-function editBanner(b) {
-  document.getElementById('banner-modal-title').textContent = '✏️ تعديل بانر';
-  document.getElementById('ab-id').value = b.id;
-  document.getElementById('ab-tag').value = b.tag||'';
-  document.getElementById('ab-title').value = b.title||'';
-  document.getElementById('ab-desc').value = b.descrip
+  list.innerHTML = items.map(c => `<div class="drv-row2"><div class="drv-av2" style="background:#F3F4F6">${esc(c.icon)||'🗂️'}</div><div clas
