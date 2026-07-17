@@ -210,11 +210,21 @@
   <div class="store-hero">
     <div class="store-hero-img" style="background:linear-gradient(135deg,#1A1A2E,#0F3460)">🏪</div>
     <button class="hero-back" onclick="showScreen('screen-customer')">→</button>
-    <div class="hero-info"><h2 id="store-detail-name">متجر</h2><div class="hero-meta"><span>📦 توصيل متاح</span></div><div class="hero-acts"><button class="ha-btn ha-call" onclick="showToast('اتصال قريباً')">📞 اتصل</button><button class="ha-btn ha-wa" onclick="showToast('واتساب قريباً')">💬 واتساب</button></div></div>
+    <div class="hero-info"><h2 id="store-detail-name">متجر</h2><div class="hero-meta"><span>📦 توصيل متاح</span></div><div class="hero-acts"><button class="ha-btn ha-call" onclick="callCurrentStore()">📞 اتصل</button><button class="ha-btn ha-wa" onclick="waCurrentStore()">💬 واتساب</button></div></div>
   </div>
   <div class="pc-bar"><div class="pc-scroll" id="pc-scroll"><button class="pc-btn active" onclick="filterProds('all',this)">الكل</button></div></div>
   <div class="prods-sec" id="prods-section"></div>
-  <div class="cart-bar-fixed" id="cart-bar-store"><button onclick="goCheckout()"><span>🛒 <span id="cart-count-s">0</span> عناصر</span><span><span id="cart-total-s">0</span> ج</span></button></div>
+  <div class="cart-bar-fixed" id="cart-bar-store"><button onclick="openCart()"><span>🛒 <span id="cart-count-s">0</span> عناصر</span><span><span id="cart-total-s">0</span> ج</span></button></div>
+</div>
+
+<!-- ===== CART ===== -->
+<div id="screen-cart" class="screen">
+  <div class="track-hero" style="display:flex;align-items:center;gap:12px">
+    <button onclick="showScreen(window.cartReturnScreen||'screen-customer')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0">→</button>
+    <div><h2>سلة المشتريات</h2><p id="cart-item-count-lbl">السلة فارغة</p></div>
+  </div>
+  <div id="cart-items-list" style="padding:14px;padding-bottom:90px"></div>
+  <div class="cart-bar-fixed" id="cart-bar-screen"><button onclick="goCheckout()"><span>✅ إتمام الطلب</span><span><span id="cart-total-full">0</span> ج</span></button></div>
 </div>
 
 <!-- ===== ORDER TRACKING ===== -->
