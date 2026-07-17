@@ -25,7 +25,7 @@
   // ===== DEBUG: يظهر أي خطأ JS فعلي على الشاشة (مؤقت لحل مشكلة التحميل) =====
   // جديد: تفاصيل الخطأ (اسم الملف/رقم السطر) بقت تتعرض بس لو DEBUG_ERRORS=true.
   // سيبوها false في الإنتاج عشان مستخدم حقيقي ميشوفش تفاصيل تقنية لو حصل خطأ.
-  window.DEBUG_ERRORS = false;
+  window.DEBUG_ERRORS = true;
   window.__lastErr = null;
   window.addEventListener('error', function(e){
     window.__lastErr = (e.message || 'خطأ غير معروف') + ' — ' + (e.filename ? e.filename.split('/').pop() : '') + ':' + (e.lineno || '');
