@@ -116,6 +116,8 @@ export async function getNextRequestId(counterName, prefix){
 
 
 // ===== تصفير أعلام المتابعة عند تسجيل الخروج (بيتنفذ من utils.js عبر clearAllListeners) =====
-onListenersCleared(() => {
+export function registerMerchantResets() {
+  onListenersCleared(() => {
   merchantOrdersUnsub = null; merchantProdsUnsub = null;
-});
+  });
+}
