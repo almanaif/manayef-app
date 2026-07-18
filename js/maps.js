@@ -62,6 +62,8 @@ export function initAdminMap(drivers=[]) {
 
 
 // ===== تصفير أعلام المتابعة عند تسجيل الخروج (بيتنفذ من utils.js عبر clearAllListeners) =====
-onListenersCleared(() => {
+export function registerMapsResets() {
+  onListenersCleared(() => {
   trackDriverUnsub = null;
-});
+  });
+}
