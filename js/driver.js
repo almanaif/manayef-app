@@ -519,7 +519,9 @@ export function dregRestart(){
 
 
 // ===== تصفير أعلام المتابعة عند تسجيل الخروج (بيتنفذ من utils.js عبر clearAllListeners) =====
-onListenersCleared(() => {
+export function registerDriverResets() {
+  onListenersCleared(() => {
   newOrdersUnsub = null; driverOrdersUnsub = null;
   _lastGpsWrite = 0; _lastGpsLat = null; _lastGpsLng = null;
-});
+  });
+}
