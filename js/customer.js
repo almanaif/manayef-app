@@ -390,7 +390,9 @@ export async function sendAnyReq(){
 
 
 // ===== تصفير أعلام المتابعة عند تسجيل الخروج (بيتنفذ من utils.js عبر clearAllListeners) =====
-onListenersCleared(() => {
+export function registerCustomerResets() {
+  onListenersCleared(() => {
   productsUnsub = null; couponsUnsub = null; bannersUnsub = null; categoriesUnsub = null;
   storesUnsub = null; ordersUnsub = null; productsByStoreUnsub = null;
-});
+  });
+}
