@@ -4,14 +4,26 @@
 import { db, auth, doc, getDoc, setDoc, serverTimestamp, onAuthStateChanged, getRedirectResult,
          isSignInWithEmailLink, signInWithEmailLink } from './firebase.js';
 import { Logger, initOfflineHandling, callCurrentStore, callStore, closeModal, filterProds, openNotifs, openWA, setLoad, showErr, showScreen, showToast, waCurrentStore } from './utils.js';
-import { addNotif, startNotifListener } from './notifications.js';
-import { initAdminMap, initTrackMap, toggleDriverMap } from './maps.js';
-import { goCheckout, openTrack } from './orders.js';
-import { addCart, chgQty, custNav, doSearch, filterCat, loadBanners, loadCategories, loadCoupons, loadCustomerData, loadOrders, loadProducts, loadProductsByStore, loadStores, openAnyReq, openCart, quickReq, removeCartItem, renderProds, selMCat, selectRatingTarget, sendAnyReq, setStar, submitMerchant, submitRating, updateCartUI } from './customer.js';
-import { acceptOrd, agreeTermsModal, buildChart, closeTermsModal, closeZoom, dregBack, dregGetLocation, dregInit, dregNext, dregRestart, dregSaveDraft, dregSetExp, drvNav, getLocation, listenNewOrders, loadDriverData, loadDriverOrders, openTermsModal, removeUploadedDoc, startGPS, submitDrvReg, toggleAgree, toggleOnline, updOrdStatus, uploadDoc, zoomDoc } from './driver.js';
-import { delProd, loadMerchantData, loadMerchantOrders, loadMerchantProds, openAddProd, saveProd, updOrdStatus2 } from './merchant.js';
-import { admAccDrv, admAccStore, admDelProd, admLogoutConfirm, admNav, admRejDrv, admRejStore, admUpdOrd, closeReasonModal, closeStoreManage, confirmReasonModal, delBanner, delCat, delCoupon, editBanner, editCat, editCoupon, filtDrvs, filtOrds, loadAdminData, loadAuditLog, logAudit, openAddBanner, openAddCat, openAddCoupon, openDrvModal, openEditProd, openReasonModal, openStoreManage, renderAdminBanners, renderAdminCats, renderAdminCoupons, saveBanner, saveCat, saveComm, saveCoupon, saveEditProd, smDeleteCover, smDeleteStore, smQuickActivate, smQuickPause, smSaveProfile, smSetAccountStatus, smSetOpen, smTab, smUploadCover, smUploadLogo, toggleProdAvail, uploadBannerImg } from './admin.js';
+import { addNotif, startNotifListener, registerNotificationsResets } from './notifications.js';
+import { initAdminMap, initTrackMap, toggleDriverMap, registerMapsResets } from './maps.js';
+import { goCheckout, openTrack, registerOrdersResets } from './orders.js';
+import { addCart, chgQty, custNav, doSearch, filterCat, loadBanners, loadCategories, loadCoupons, loadCustomerData, loadOrders, loadProducts, loadProductsByStore, loadStores, openAnyReq, openCart, quickReq, removeCartItem, renderProds, selMCat, selectRatingTarget, sendAnyReq, setStar, submitMerchant, submitRating, updateCartUI, registerCustomerResets } from './customer.js';
+import { acceptOrd, agreeTermsModal, buildChart, closeTermsModal, closeZoom, dregBack, dregGetLocation, dregInit, dregNext, dregRestart, dregSaveDraft, dregSetExp, drvNav, getLocation, listenNewOrders, loadDriverData, loadDriverOrders, openTermsModal, removeUploadedDoc, startGPS, submitDrvReg, toggleAgree, toggleOnline, updOrdStatus, uploadDoc, zoomDoc, registerDriverResets } from './driver.js';
+import { delProd, loadMerchantData, loadMerchantOrders, loadMerchantProds, openAddProd, saveProd, updOrdStatus2, registerMerchantResets } from './merchant.js';
+import { admAccDrv, admAccStore, admDelProd, admLogoutConfirm, admNav, admRejDrv, admRejStore, admUpdOrd, closeReasonModal, closeStoreManage, confirmReasonModal, delBanner, delCat, delCoupon, editBanner, editCat, editCoupon, filtDrvs, filtOrds, loadAdminData, loadAuditLog, logAudit, openAddBanner, openAddCat, openAddCoupon, openDrvModal, openEditProd, openReasonModal, openStoreManage, renderAdminBanners, renderAdminCats, renderAdminCoupons, saveBanner, saveCat, saveComm, saveCoupon, saveEditProd, smDeleteCover, smDeleteStore, smQuickActivate, smQuickPause, smSaveProfile, smSetAccountStatus, smSetOpen, smTab, smUploadCover, smUploadLogo, toggleProdAvail, uploadBannerImg, registerAdminResets } from './admin.js';
 import { doLogin, doLogout, doRegister, hideLoading, loginGoogle, pickEntryType, routeUser, selectRole, showEmailOTP, showForgot, switchTab, syncToHubSpot, updateEntryLabel } from './auth.js';
+
+// كل موديول عنده أعلام subscribe (زي productsUnsub) بيسجّل دالة تصفيرها هنا -- لازم يتنفذوا
+// بعد ما كل الموديولات خلصت تحميل (يعني هنا في main.js تحديدًا) عشان نتجنب مشكلة
+// "Cannot access '...' before initialization" الناتجة عن الاستيراد الدائري بين utils.js
+// والموديولات التانية لو نادينا onListenersCleared من جوه الموديولات نفسها مباشرة.
+registerCustomerResets();
+registerNotificationsResets();
+registerOrdersResets();
+registerMapsResets();
+registerDriverResets();
+registerMerchantResets();
+registerAdminResets();
 
 // ===== EXPOSE TO WINDOW =====
 // app.js (اتقسم دلوقتي لموديولات) بيتحمّل كـ ES module، فالدوال في الأعلى مش بتبقى
