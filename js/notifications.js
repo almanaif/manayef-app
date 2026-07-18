@@ -29,6 +29,8 @@ export function startNotifListener() {
 
 
 // ===== تصفير أعلام المتابعة عند تسجيل الخروج (بيتنفذ من utils.js عبر clearAllListeners) =====
-onListenersCleared(() => {
+export function registerNotificationsResets() {
+  onListenersCleared(() => {
   notifListenerStarted = false;
-});
+  });
+}
