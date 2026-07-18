@@ -606,6 +606,8 @@ export async function delCoupon(id) {
 
 
 // ===== تصفير أعلام المتابعة عند تسجيل الخروج (بيتنفذ من utils.js عبر clearAllListeners) =====
-onListenersCleared(() => {
+export function registerAdminResets() {
+  onListenersCleared(() => {
   adminOrdersUnsub = null; adminUsersUnsub = null; auditLogUnsub = null; smProdsUnsub = null;
-});
+  });
+}
