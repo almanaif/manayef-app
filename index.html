@@ -234,6 +234,7 @@
   <div class="map-wrap"><div id="tracking-map"></div></div>
   <div class="map-card"><h3>تفاصيل الطلب</h3>
     <div class="map-info-row"><span class="lbl">المندوب</span><span class="val" id="track-driver">بانتظار المندوب...</span></div>
+    <div id="track-driver-contact" style="display:none;gap:8px;margin:4px 0 8px"></div>
     <div class="map-info-row"><span class="lbl">وقت التوصيل</span><span class="val" id="track-eta">15-25 دقيقة</span></div>
     <div class="map-info-row"><span class="lbl">الإجمالي</span><span class="val" id="track-total">0 ج</span></div>
   </div>
@@ -461,11 +462,11 @@
     <div class="adm-card"><h3>كل الطلبات</h3>
       <div class="fb2">
         <button class="fc2 active" onclick="filtOrds('all',this)">الكل</button>
-        <button class="fc2" onclick="filtOrds('new',this)">⏳ قيد الانتظار</button>
+        <button class="fc2" onclick="filtOrds('waiting',this)">⏳ قيد الانتظار</button>
         <button class="fc2" onclick="filtOrds('accepted',this)">✅ مقبول</button>
-        <button class="fc2" onclick="filtOrds('preparing',this)">👨‍🍳 جاري التحضير</button>
-        <button class="fc2" onclick="filtOrds('ready',this)">📦 جاهز</button>
-        <button class="fc2" onclick="filtOrds('delivering',this)">🛵 مع المندوب</button>
+        <button class="fc2" onclick="filtOrds('searching',this)">👨‍🍳 جاري التحضير</button>
+        <button class="fc2" onclick="filtOrds('assigned',this)">📦 جاهز</button>
+        <button class="fc2" onclick="filtOrds('withDriver',this)">🛵 مع المندوب</button>
         <button class="fc2" onclick="filtOrds('done',this)">🏁 مكتمل</button>
         <button class="fc2" onclick="filtOrds('cancelled',this)">❌ ملغي</button>
       </div>
