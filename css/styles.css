@@ -588,3 +588,13 @@ textarea.inp{resize:vertical;font-family:'Cairo',sans-serif}
 .pts-card .pl{font-size:11px;color:rgba(255,255,255,.85);margin-bottom:3px}
 .pts-card .pv{font-size:26px;font-weight:900;color:#fff}
 
+/* ===== ACCOUNT PAGE (إعادة تصميم "حسابي") ===== */
+.acc-card{background:linear-gradient(135deg,var(--s),#0F3460);border-radius:var(--r);padding:20px;color:#fff;margin-bottom:10px;display:flex;align-items:center;gap:14px}
+.acc-info{flex:1;min-width:0}
+.acc-info h3{font-size:16px;font-weight:800;margin-bottom:6px}
+.acc-line{display:flex;align-items:center;gap:5px;font-size:12px;opacity:.85;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-stats-row{display:flex;gap:10px;margin-bottom:12px}
+.acc-stat{flex:1;background:#fff;border-radius:var(--r2);padding:14px 10px;text-align:center;box-shadow:var(--sh)}
+.acc-stat-v{font-size:20px;font-weight:900;color:var(--p)}
+.acc-stat-l{font-size:11px;color:var(--mu);margin-top:2px;font-weight:600}
+
