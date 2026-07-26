@@ -141,6 +141,10 @@ export async function doLogout() {
   if (window._gpsWatch) navigator.geolocation.clearWatch(window._gpsWatch);
   if (window._gpsInterval) clearInterval(window._gpsInterval);
   clearAllListeners(); // بيصفّر كل الـ listeners + أعلام المتابعة بما فيها إحداثيات GPS المندوب (مسجلة من driver.js) // يقفل كل الـ onSnapshot listeners المفتوحة (طلبات، منتجات، إشعارات...)
+  // جديد (Sprint 3): screen-cust-detail بتتفتح بـ style.display المباشر (زي screen-store-manage
+  // من قبل)، وده بيتغلب على أي تبديل بـ class.active اللي showScreen() بتعمله - فلازم نقفلها
+  // صراحة هنا وإلا ممكن تفضل عالقة ظاهرة فوق شاشة الدخول بعد تسجيل الخروج.
+  const cd = document.getElementById('screen-cust-detail'); if (cd) cd.style.display = 'none';
   try { await signOut(auth); } catch(e) {}
   showScreen('screen-entry');
 }
@@ -188,6 +192,7 @@ export function routeUser() {
     else { showScreen('screen-driver'); loadDriverData(); startGPS(); }
   }
   else if (role === 'merchant') { showScreen('screen-merchant'); loadMerchantData(); }
+  else if (window.CUD?.status === 'blocked' || window.CUD?.status === 'deleted') { showScreen('screen-blocked'); }
   else { showScreen('screen-customer'); loadCustomerData(); getLocation(); loadProducts(); loadBanners(); }
 }
 
