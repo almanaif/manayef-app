@@ -1,6 +1,6 @@
 // ===== customer.js — شاشات العميل: تصفح المتاجر/المنتجات، السلة، الطلبات، التقييم، طلبات عامة =====
 
-import { addDoc, collection, db, limit, orderBy, query, serverTimestamp, where } from './firebase.js';
+import { addDoc, collection, db, getCountFromServer, limit, orderBy, query, serverTimestamp, where } from './firebase.js';
 import { SC, SL, NEW_STEPS, NEW_STEP_ICONS, NEW_STEP_LABELS, callStore, closeModal, debounce, esc, escJs, filterProds, normalizeStatus, onListenersCleared, onSnapshot, openWA, showScreen, showToast } from './utils.js';
 import { ORDER_STATUS, openTrack } from './orders.js';
 
@@ -279,14 +279,33 @@ export function loadCustomerData() {
   if (!window.CUD) return;
   const ud = window.CUD;
   document.getElementById('cust-name').textContent = ud.name || '--';
-  document.getElementById('cust-email').textContent = ud.email || '--';
   const pts = ud.points || 0;
   ['user-pts','pts-big','pts-prof','pts-menu'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=pts; });
   if (ud.photoURL) {
     ['cust-av'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=`<img src="${esc(ud.photoURL)}" alt="avatar">`; });
   }
+  // إعادة تصميم صفحة "حسابي": عرض الهاتف/العنوان بس لو موجودين فعليًا (بدون بيانات وهمية)
+  const phoneLine = document.getElementById('cust-phone-line');
+  if (phoneLine) { if (ud.phone) { document.getElementById('cust-phone').textContent = ud.phone; phoneLine.style.display = 'flex'; } else phoneLine.style.display = 'none'; }
+  const addrLine = document.getElementById('cust-address-line');
+  if (addrLine) { if (ud.address) { document.getElementById('cust-address').textContent = ud.address; addrLine.style.display = 'flex'; } else addrLine.style.display = 'none'; }
   loadOrders();
   loadStores();
+}
+
+// عدد الطلبات الحقيقي (Count دقيق عبر getCountFromServer، مش من قائمة الـ 10 الأخيرة المحدودة
+// اللي بيعرضها loadOrders() - عشان الرقم يكون صحيح مش مضلِّل لعميل عنده أكتر من 10 طلبات).
+// بيتحمّل مرة واحدة بس لما شاشة "حسابي" تتفتح فعليًا، مش من أول تسجيل دخول.
+let profileStatsLoaded = false;
+export async function loadProfileStats() {
+  if (profileStatsLoaded || !window.CU) return;
+  profileStatsLoaded = true;
+  const el = document.getElementById('acc-ord-count');
+  if (!el) return;
+  try {
+    const cAgg = await getCountFromServer(query(collection(db,'orders'), where('customerId','==',window.CU.uid)));
+    el.textContent = cAgg.data().count;
+  } catch (e) { el.textContent = '--'; }
 }
 
 export let ordersUnsub = null;
@@ -334,6 +353,7 @@ export function custNav(tab, el) {
   document.getElementById('tab-orders').style.display = tab==='orders'?'block':'none';
   document.getElementById('tab-rewards').style.display = tab==='rewards'?'block':'none';
   document.getElementById('tab-profile').style.display = tab==='profile'?'block':'none';
+  if (tab==='profile') loadProfileStats();
 }
 
 
