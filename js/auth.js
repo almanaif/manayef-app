@@ -170,6 +170,13 @@ export async function selectRole(role) {
   };
   try {
     await setDoc(doc(db,'users',user.uid), data);
+    // إصلاح Release Blocker: مسار Google Sign-In كان بينشئ users/{uid} بس، من غير أي مستند
+    // مقابل في stores/{uid} - فأي تاجر يسجّل من هنا كان يظهر "نشط" في لوحة الأدمن (بتقرا من
+    // users) لكن يفضل غير موجود نهائيًا للعميل (loadStores بتقرا من stores). status لازم يكون
+    // 'pending' هنا تحديدًا عشان يطابق شرط allow create الموجود بالفعل في firestore.rules.
+    if (role === 'merchant') {
+      try { await setDoc(doc(db,'stores',user.uid), { storeName: data.name, storePhone: '', category: 'متجر', status: 'pending', createdAt: serverTimestamp() }); } catch(e) {}
+    }
     window.CUD = data;
     syncToHubSpot(data);
     if (role === 'driver') showScreen('screen-driver-register');
