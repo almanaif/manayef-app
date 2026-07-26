@@ -1,11 +1,29 @@
 // ===== admin.js — لوحة الإدارة: الطلبات، المستخدمين، المتاجر، التصنيفات، البانرات، الكوبونات، سجل التدقيق =====
 
-import { addDoc, collection, db, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from './firebase.js';
-import { SC, SL, STEPS, closeModal, esc, escJs, onListenersCleared, onSnapshot, secureCloudinaryUpload, showToast } from './utils.js';
+import { addDoc, collection, db, deleteDoc, doc, getAggregateFromServer, getCountFromServer, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where, average, count } from './firebase.js';
+import { SC, SL, closeModal, esc, escJs, normalizeStatus, onListenersCleared, onSnapshot, secureCloudinaryUpload, showToast } from './utils.js';
 import { doLogout } from './auth.js';
 import { zoomDoc } from './driver.js';
-import { listenSettings } from './orders.js';
+import { ORDER_STATUS, cancelOrder, listenSettings, transitionOrder } from './orders.js';
 import { initAdminMap } from './maps.js';
+import { createPaginatedListener } from './admin-pagination.js';
+import { startCustomersListener, stopCustomersListener, registerCustomerListReset } from './admin-customers.js';
+import { startIncomingRequestsListeners, stopIncomingRequestsListeners } from './admin-requests.js';
+
+// خريطة الانتقالات المسموحة (زي ما هي في orders.js) — بنستخدمها هنا بس عشان نعرض للأدمن
+// أزرار الحالات المسموحة فعليًا بعدها، بدل ما نعرضله كل الحالات زي قبل كده (كان ممكن يقفز
+// لأي حالة عشوائية). القائمة دي مطابقة تمامًا لـ ORDER_TRANSITIONS في orders.js.
+const ADMIN_NEXT_STATUS = {
+  waiting_merchant: ['merchant_accepted','merchant_rejected','cancelled'],
+  merchant_accepted: ['searching_driver','cancelled'],
+  searching_driver: ['driver_assigned','cancelled'],
+  driver_assigned: ['driver_arrived','cancelled'],
+  driver_arrived: ['picked_up','cancelled'],
+  picked_up: ['on_the_way'],
+  on_the_way: ['delivered'],
+  // توافق مع الحالات القديمة
+  new: ['accepted','cancelled'], accepted: ['preparing','cancelled'], preparing: ['ready','cancelled'], ready: ['delivering'], delivering: ['done'],
+};
 
 // ===== ADMIN FUNCTIONS =====
 export let adminOrdersUnsub = null, adminUsersUnsub = null;
@@ -22,27 +40,18 @@ export async function loadAdminData() {
     document.getElementById('adm-drv-pay').textContent=Math.round(allR*0.15)+' ج';
     document.getElementById('adm-avg-ord').textContent=(snap.size?Math.round(allR/snap.size):0)+' ج';
     const recs=[];snap.forEach(d=>recs.push({...d.data(),id:d.id}));
-    recs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-    let html='';
-    recs.slice(0,5).forEach(o=>{
-      html+=`<div style="padding:9px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700">#${o.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'--'}</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mu)">🏪 ${esc(o.storeName)||'--'} • ${esc(o.customerName)||'عميل'}</span><span><strong>${o.total||0} ج</strong></span></div>
-        <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">
-          ${STEPS.filter(s=>s!==o.status).map(s=>`<button class="mb2 mb-view" onclick="admUpdOrd('${o.id}','${s}')" style="font-size:9px">${SL[s]}</button>`).join('')}
-        </div>
-      </div>`;
-    });
-    document.getElementById('adm-recent-ords').innerHTML=html||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا توجد طلبات</p></div>';
-    document.getElementById('adm-all-ords').innerHTML=recs.length?recs.map(o=>`<div class="drv-row2" data-status="${o.status||'new'}" style="padding:9px 0;border-bottom:1px solid var(--border);display:block">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700">#${o.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'--'}</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mu)">🏪 ${esc(o.storeName)||'--'}</span><span>${o.total||0} ج <span style="color:var(--p)">(${o.commission||0} ج)</span></span></div>
-    </div>`).join(''):'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا توجد طلبات</p></div>';
     const allOrds=document.getElementById('adm-t-allords'); if(allOrds) allOrds.textContent=snap.size;
-    const doneOrds=document.getElementById('adm-t-doneords'); if(doneOrds) doneOrds.textContent=recs.filter(o=>o.status==='done').length;
-    const cancOrds=document.getElementById('adm-t-cancords'); if(cancOrds) cancOrds.textContent=recs.filter(o=>o.status==='cancelled').length;
+    const doneOrds=document.getElementById('adm-t-doneords'); if(doneOrds) doneOrds.textContent=recs.filter(o=>normalizeStatus(o.status)===ORDER_STATUS.DELIVERED).length;
+    const cancOrds=document.getElementById('adm-t-cancords'); if(cancOrds) cancOrds.textContent=recs.filter(o=>normalizeStatus(o.status)===ORDER_STATUS.CANCELLED).length;
     const allRev2=document.getElementById('adm-t-allrev'); if(allRev2) allRev2.textContent=allR+' ج';
   });
+
+  // جديد (Sprint 2.3 Performance Review - Phase 2a): بدل ما "آخر 5 طلبات" و"كل الطلبات" كانوا
+  // بيتبنوا من نفس الـ snapshot الكامل فوق (يعني بيتعادوا رسم في كل مرة أي طلب في المنصة كلها
+  // يتغيّر)، بقى كل واحدة عندها Listener مستقل مربوط بـ limit() فعلي - بيفضل Live بالكامل
+  // بدون أي تغيير محسوس في السرعة، لكن من غير ما نعيد بناء HTML ضخم لكل طلب موجود في كل مرة.
+  renderRecentOrders();
+  filtOrds('all', document.querySelector('#adm-orders .fc2.active') || null);
 
   if (adminUsersUnsub) return;
   adminUsersUnsub = onSnapshot(collection(db,'users'), snap=>{
@@ -59,17 +68,178 @@ export async function loadAdminData() {
     document.getElementById('adm-pend-drvs').innerHTML=pd||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد مناديب معلّقون</p></div>';
     const pendC=document.getElementById('adm-pend-c'); if(pendC) pendC.textContent=pendDrvs.length;
     const storesC=document.getElementById('adm-stores-c'); if(storesC) storesC.textContent=allStores.length;
-    const pendStores=allStores.filter(m=>m.status==='pending').length;
-    const notifC=document.getElementById('adm-notif-c'); if(notifC) notifC.textContent=pendDrvs.length+pendStores;
-    let dl='';
-    allDrvs.forEach(u=>{dl+=`<div class="drv-row2" data-st="${u.status||'active'}"><div class="drv-av2">👤</div><div class="drv-info2"><strong>${esc(u.fullName||u.name)||'--'}</strong><small>📱 ${esc(u.phone)||'--'} | ${u.status==='pending'?'⏳ انتظار':'✅ نشط'}</small></div><div class="drv-row2-acts">${u.status==='pending'?`<button class="mb2 mb-acc" onclick="admAccDrv('${u.id}')">قبول</button><button class="mb2 mb-rej" onclick="admRejDrv('${u.id}')">رفض</button>`:`<button class="mb2 mb-view" onclick="openDrvModal('${u.id}')">ملفه</button>`}</div></div>`;});
-    document.getElementById('adm-drvs-list').innerHTML=dl||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد مناديب</p></div>';
-    let ul='';
-    snap.forEach(d=>{const u=d.data();if(u.role!=='customer')return;ul+=`<div class="drv-row2"><div class="drv-av2" style="font-size:16px">👤</div><div class="drv-info2"><strong>${esc(u.name)||'--'}</strong><small>📱 ${esc(u.phone||u.email)||'--'} | ${u.points||0} نقطة</small></div></div>`;});
-    document.getElementById('adm-users-list').innerHTML=ul||'<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد عملاء</p></div>';
-    renderAdminStoresList(allStores);
+    // جديد (Final Targeted Review - البند 6): اتشالت الكتابة على adm-notif-c من هنا - كانت
+    // بتتعارض مع notifications.js اللي بيكتب على نفس الـ Element ID برقم مختلف (إشعارات غير
+    // مقروءة). البادج ده بقى ملك حصري لنظام الإشعارات. عدد المناديب المعلّقين معروض بشكل
+    // مستقل وصحيح فعلاً في adm-pend-c فوق.
     if (window.admMap) initAdminMap(allDrvs);
   });
+}
+
+// =====================================================================================
+// Phase 2b (Sprint 2.3 - الخيار C المعتمد): قوائم Drivers/Customers/Merchants الكاملة
+// كانت الـ 3 قوائم دي بتترسم من نفس Listener المستخدمين الكامل فوق (بدون فصل). الـ Listener
+// الأساسي فضل زي ما هو بالظبط (نفس العدادات، نفس المعلّقين، بدون أي تغيير) - بس القوائم
+// الطويلة دي بقى كل واحدة عندها Query/Listener خاص بيها بـ limit()+startAfter()، وبيشتغل
+// بس وقت ما شاشته فعليًا مفتوحة (مش طول الوقت في الخلفية) - نفس روح "الأولوية لتقليل الـ
+// Reads بدون فقدان اللحظية وقت الاستخدام الفعلي".
+// =====================================================================================
+const USERS_PAGE_SIZE = 20;
+
+// ----- Drivers (شاشة "كل المناديب") -----
+let drvsPager = null, drvsFilter = 'all';
+function startDriversListener() {
+  if (drvsPager) { drvsPager.stop(); drvsPager = null; }
+  const filters = [where('role','==','driver')];
+  if (drvsFilter !== 'all') filters.push(where('status','==',drvsFilter));
+  const baseQuery = query(collection(db,'users'), ...filters, orderBy('createdAt','desc'));
+  let allRows = [];
+  drvsPager = createPaginatedListener({
+    baseQuery, pageSize: USERS_PAGE_SIZE,
+    onPage(docs, meta) {
+      const rows = docs.map(d => {
+        const u = { ...d.data(), id: d.id };
+        return `<div class="drv-row2" data-st="${u.status||'active'}"><div class="drv-av2">👤</div><div class="drv-info2"><strong>${esc(u.fullName||u.name)||'--'}</strong><small>📱 ${esc(u.phone)||'--'} | ${u.status==='pending'?'⏳ انتظار':'✅ نشط'}</small></div><div class="drv-row2-acts">${u.status==='pending'?`<button class="mb2 mb-view" onclick="openDrvModal('${u.id}')">📄 مراجعة المستندات</button>`:`<button class="mb2 mb-view" onclick="openDrvModal('${u.id}')">ملفه</button>`}</div></div>`;
+      });
+      allRows = meta.isFirstPage ? rows : allRows.concat(rows);
+      const el = document.getElementById('adm-drvs-list');
+      if (el) el.innerHTML = allRows.length ? allRows.join('') : '<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد مناديب</p></div>';
+      const moreBtn = document.getElementById('adm-drvs-more'); if (moreBtn) moreBtn.style.display = meta.hasMore ? 'block' : 'none';
+    },
+  });
+}
+export function filtDrvs(st, btn) {
+  document.querySelectorAll('#adm-drivers .fc2').forEach(c=>c.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  drvsFilter = st;
+  startDriversListener();
+}
+export function loadMoreDrivers() { if (drvsPager) drvsPager.loadMore(); }
+export function stopDriversListener() { if (drvsPager) { drvsPager.stop(); drvsPager = null; } }
+
+// ----- Customers: منقولة لـ js/admin-customers.js (Sprint 3) - فيها بحث موحّد + فلتر حالة + صفحة تفاصيل -----
+
+// ----- Merchants (شاشة "المتاجر") -----
+let storesPager = null;
+export function startMerchantsListener() {
+  if (storesPager) { storesPager.stop(); storesPager = null; }
+  const baseQuery = query(collection(db,'users'), where('role','==','merchant'), orderBy('createdAt','desc'));
+  let allRows = [];
+  storesPager = createPaginatedListener({
+    baseQuery, pageSize: USERS_PAGE_SIZE,
+    async onPage(docs, meta) {
+      const newRowsHtml = await Promise.all(docs.map(m => renderOneMerchantRow({ ...m.data(), id: m.id })));
+      allRows = meta.isFirstPage ? newRowsHtml : allRows.concat(newRowsHtml);
+      const el = document.getElementById('adm-stores-list');
+      if (el) el.innerHTML = allRows.length ? allRows.join('') : '<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد تجار</p></div>';
+      const moreBtn = document.getElementById('adm-stores-more'); if (moreBtn) moreBtn.style.display = meta.hasMore ? 'block' : 'none';
+    },
+  });
+}
+export function loadMoreMerchants() { if (storesPager) storesPager.loadMore(); }
+export function stopMerchantsListener() { if (storesPager) { storesPager.stop(); storesPager = null; } }
+
+// جديد (Sprint 2.3 - إصلاح Critical Finding #3 من Performance Review): كانت الدالة دي بتعمل
+// 3× getDocs كاملة (منتجات+طلبات+تقييمات) لكل تاجر بس عشان تحسب رقم/متوسط - يعني تحميل مئات
+// المستندات الكاملة عشان 3 أرقام. دلوقتي بتستخدم getCountFromServer()/getAggregateFromServer()
+// (ميزة Firestore أصلية، بدون أي مكتبة إضافية) واللي بترجع الرقم مباشرة من السيرفر من غير
+// تنزيل أي مستند - نفس الأرقام المعروضة بالظبط، بتكلفة أقل بشكل كبير جدًا.
+async function renderOneMerchantRow(m) {
+  const mName = esc(m.storeName || m.name || '--');
+  let prodC=0, ordC=0, ratingC=0, ratingAvg=0;
+  try{
+    const [pAgg,oAgg,rAgg] = await Promise.all([
+      getCountFromServer(query(collection(db,'products'),where('merchantId','==',m.id))),
+      getCountFromServer(query(collection(db,'orders'),where('storeId','==',m.id))),
+      getAggregateFromServer(query(collection(db,'ratings'),where('targetId','==',m.id),where('targetType','==','store')), { count: count(), avg: average('stars') }),
+    ]);
+    prodC=pAgg.data().count; ordC=oAgg.data().count; ratingC=rAgg.data().count;
+    if(ratingC) ratingAvg=(rAgg.data().avg||0).toFixed(1);
+  }catch(e){}
+  const createdStr = m.createdAt?.toDate ? m.createdAt.toDate().toLocaleDateString('ar-EG') : '--';
+  const statusBadge = m.status==='pending'?'<span class="p-badge">⏳ بانتظار</span>'
+    : m.status==='active'?'<span style="color:var(--ok);font-size:10px;font-weight:700">✅ نشط</span>'
+    : m.status==='paused'?'<span style="color:var(--warn);font-size:10px;font-weight:700">⏸️ متوقف</span>'
+    : m.status==='deleted'?'<span style="color:var(--danger);font-size:10px;font-weight:700">🗑️ محذوف</span>'
+    : '<span style="color:var(--danger);font-size:10px;font-weight:700">❌ مرفوض</span>';
+  const actionBtns = m.status==='pending'
+    ? `<button class="mb2 mb-acc" onclick="admAccStore('${m.id}')">قبول</button><button class="mb2 mb-rej" onclick="admRejStore('${m.id}')">رفض</button>`
+    : `<button class="mb2 mb-view" onclick="openStoreManage('${m.id}')">إدارة</button>${m.status==='active'?`<button class="mb2 mb-rej" onclick="smQuickPause('${m.id}')">إيقاف</button>`:m.status==='paused'?`<button class="mb2 mb-acc" onclick="smQuickActivate('${m.id}')">تفعيل</button>`:''}`;
+  return `<div class="drv-row2"><div class="drv-av2" style="background:#EFF6FF">🏬</div><div class="drv-info2"><strong>${mName}</strong><small>📱 ${esc(m.storePhone||m.phone)||'--'} | ${statusBadge}</small><br><small style="color:var(--mu);font-size:10px">📦 ${prodC} منتج • 🧾 ${ordC} طلب • ⭐ ${ratingAvg||0} (${ratingC}) • 📅 ${createdStr}</small></div><div class="drv-row2-acts">${actionBtns}</div></div>`;
+}
+
+// ===== قائمة "آخر 5 طلبات" (جديد - Sprint 2.3 Phase 2a) =====
+// نفس شكل ومحتوى الصف اللي كان بيتبني من الـ snapshot الكامل بالظبط - الفرق الوحيد إن
+// مصدر البيانات دلوقتي limit(5) live مستقل، مش كل الطلبات على الإطلاق.
+let recentOrdersPager = null;
+function renderRecentOrders() {
+  if (recentOrdersPager) { recentOrdersPager.stop(); recentOrdersPager = null; }
+  const baseQuery = query(collection(db,'orders'), orderBy('createdAt','desc'));
+  recentOrdersPager = createPaginatedListener({
+    baseQuery, pageSize: 5,
+    onPage(docs) {
+      let html = '';
+      docs.forEach(d => {
+        const o = { ...d.data(), id: d.id };
+        const dt = o.createdAt?.toDate ? o.createdAt.toDate() : null;
+        const ut = o.updatedAt?.toDate ? o.updatedAt.toDate() : null;
+        const lastHist = Array.isArray(o.statusHistory) && o.statusHistory.length ? o.statusHistory[o.statusHistory.length-1] : null;
+        const validNext = ADMIN_NEXT_STATUS[o.status] || [];
+        html += `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700">#${o.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'--'}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mu)">🏪 ${esc(o.storeName)||'--'} • ${esc(o.customerName)||'عميل'}</span><span><strong>${o.total||0} ج</strong></span></div>
+          <div style="font-size:10px;color:var(--mu);margin-top:2px">🛵 ${esc(o.driverName)||'بدون مندوب'} • 🕐 ${dt?dt.toLocaleString('ar-EG'):'--'}${ut?' • آخر تحديث: '+ut.toLocaleString('ar-EG'):''}</div>
+          ${lastHist?`<div style="font-size:10px;color:var(--mu);margin-top:2px">📋 آخر انتقال: ${SL[lastHist.from]||lastHist.from||'--'} ← ${SL[lastHist.to]||lastHist.to}</div>`:''}
+          <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">
+            ${validNext.map(s=>`<button class="mb2 mb-view" onclick="admUpdOrd('${o.id}','${s}')" style="font-size:9px">${SL[s]}</button>`).join('')}
+          </div>
+        </div>`;
+      });
+      const el = document.getElementById('adm-recent-ords');
+      if (el) el.innerHTML = html || '<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا توجد طلبات</p></div>';
+    },
+  });
+}
+
+// ===== قائمة "كل الطلبات" القابلة للفلترة والترقيم (جديد - Sprint 2.3 Phase 2a) =====
+// كانت بتترسم من الـ snapshot الكامل وتتفلتر بإخفاء/إظهار Divs في المتصفح (كل الصفوف محمّلة
+// مسبقًا فعليًا). دلوقتي بتتفلتر فعليًا عبر Firestore Query (where status in [...]) + limit()،
+// وبتدعم "تحميل المزيد" بـ startAfter() بدل تحميل كل الطلبات مرة واحدة.
+const ORDS_PAGE_SIZE = 20;
+let allOrdsPager = null;
+export function filtOrds(group, btn) {
+  document.querySelectorAll('#adm-orders .fc2').forEach(c=>c.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (allOrdsPager) { allOrdsPager.stop(); allOrdsPager = null; }
+  const groupValues = FILTER_GROUPS[group];
+  const baseQuery = groupValues
+    ? query(collection(db,'orders'), where('status','in',groupValues), orderBy('createdAt','desc'))
+    : query(collection(db,'orders'), orderBy('createdAt','desc'));
+  let allRows = [];
+  const renderRows = () => {
+    const el = document.getElementById('adm-all-ords');
+    if (!el) return;
+    el.innerHTML = allRows.length ? allRows.join('') : '<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا توجد طلبات</p></div>';
+  };
+  allOrdsPager = createPaginatedListener({
+    baseQuery, pageSize: ORDS_PAGE_SIZE,
+    onPage(docs, meta) {
+      const rows = docs.map(d => {
+        const o = { ...d.data(), id: d.id };
+        return `<div class="drv-row2" data-status="${normalizeStatus(o.status)||'waiting_merchant'}" style="padding:9px 0;border-bottom:1px solid var(--border);display:block">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700">#${o.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'--'}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--mu)">🏪 ${esc(o.storeName)||'--'}</span><span>${o.total||0} ج <span style="color:var(--p)">(${o.commission||0} ج)</span></span></div>
+    </div>`;
+      });
+      allRows = meta.isFirstPage ? rows : allRows.concat(rows);
+      renderRows();
+      const moreBtn = document.getElementById('adm-ords-more');
+      if (moreBtn) moreBtn.style.display = meta.hasMore ? 'block' : 'none';
+    },
+  });
+}
+export function loadMoreOrders() {
+  if (allOrdsPager) allOrdsPager.loadMore();
 }
 
 
@@ -132,7 +302,16 @@ export function confirmReasonModal(){
   if(cb) cb(reason);
 }
 
-export async function admUpdOrd(id,status){try{await updateDoc(doc(db,'orders',id),{status,updatedAt:serverTimestamp()});showToast('✅ تم تحديث الطلب','ok');}catch(e){showToast('حدث خطأ','err');}}
+export async function admUpdOrd(id,status){
+  try{
+    const actor = { type:'admin', uid: window.CU?.uid, name: window.CUD?.name || 'أدمن' };
+    if (status === ORDER_STATUS.CANCELLED) await cancelOrder(id, actor);
+    else await transitionOrder(id, status, actor);
+    showToast('✅ تم تحديث الطلب','ok');
+  }catch(e){
+    showToast(e?.message==='invalid-transition' ? 'انتقال غير مسموح لهذه الحالة' : 'حدث خطأ','err');
+  }
+}
 export async function admAccDrv(uid){try{await updateDoc(doc(db,'users',uid),{status:'active',approvedAt:serverTimestamp()});await addDoc(collection(db,'notifications'),{userId:uid,title:'🎉 تم قبول حسابك',body:'تم اعتماد حسابك كمندوب توصيل، تقدر تبدأ تستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});logAudit('قبول مندوب');showToast('✅ تم قبول المندوب','ok');closeModal('drv-modal');}catch(e){showToast('حدث خطأ','err');}}
 export function admRejDrv(uid){
   openReasonModal('سبب رفض المندوب', ['صورة البطاقة غير واضحة','الرخصة منتهية','البيانات غير مطابقة'], async(reason)=>{
@@ -190,6 +369,9 @@ export async function openDrvModal(uid){
 
 // ===== ADMIN: STORE MANAGEMENT SCREEN (بيانات المتجر + المنتجات) =====
 window.smCurrentStore = null;
+// ⚠️ Dead Code (Sprint 2.3 Phase 2b): الدالة دي استُبدلت بـ startMerchantsListener()+renderOneMerchantRow()
+// فوق (بيستخدموا Aggregation Queries بدل تحميل كل المستندات). مفيش أي استدعاء لها في المشروع
+// دلوقتي (اتأكد بالبحث). متسيبناش زي ما هي بدل الحذف - نفس مبدأ "وثّق قبل ما تحذف" المتبع في المشروع.
 export async function renderAdminStoresList(allStores){
   if(!allStores.length){ document.getElementById('adm-stores-list').innerHTML='<div class="empty-state" style="padding:14px"><p style="font-size:12px">لا يوجد تجار</p></div>'; return; }
   const rows = await Promise.all(allStores.map(async m=>{
@@ -414,19 +596,33 @@ export async function admDelProd(id, name){
   }catch(e){ showToast('حدث خطأ','err'); }
 }
 
-export function filtOrds(st,btn){
-  document.querySelectorAll('#adm-orders .fc2').forEach(c=>c.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('#adm-all-ords .drv-row2').forEach(r=>r.style.display=(st==='all'||r.dataset.status===st)?'block':'none');
-}
+// خرائط تجميع فلاتر الطلبات في لوحة الأدمن - مصدر واحد لكل تصنيف (Sprint 2.2). من Sprint 2.3
+// دي بقت مستخدمة كـ where('status','in',[...]) في Query حقيقي بدل إخفاء/إظهار Divs - راجع
+// filtOrds() المعرّفة فوق بعد loadAdminData مباشرة.
+const FILTER_GROUPS = {
+  waiting: [ORDER_STATUS.WAITING_MERCHANT],
+  accepted: [ORDER_STATUS.MERCHANT_ACCEPTED],
+  searching: [ORDER_STATUS.SEARCHING_DRIVER],
+  assigned: [ORDER_STATUS.DRIVER_ASSIGNED, ORDER_STATUS.DRIVER_ARRIVED],
+  withDriver: [ORDER_STATUS.PICKED_UP, ORDER_STATUS.ON_THE_WAY],
+  done: [ORDER_STATUS.DELIVERED],
+  cancelled: [ORDER_STATUS.CANCELLED, ORDER_STATUS.MERCHANT_REJECTED],
+};
 
 export function admNav(page,el){
   document.querySelectorAll('.adm-nb').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');
-  ['dashboard','drivers','stores','orders','users','finance','cats','banners','coupons','map','audit'].forEach(p=>{const e=document.getElementById('adm-'+p);if(e)e.style.display=p===page?'block':'none';});
+  ['dashboard','drivers','stores','orders','users','finance','cats','banners','coupons','map','audit','requests'].forEach(p=>{const e=document.getElementById('adm-'+p);if(e)e.style.display=p===page?'block':'none';});
   if(page==='map'){setTimeout(()=>initAdminMap([]),200);}
   if(page==='audit'){loadAuditLog();}
+  // جديد (Sprint 2.3 Phase 2b - الخيار C): القوائم الطويلة (مناديب/عملاء/تجار) بتشتغل بـ Listener
+  // بس وهي الشاشة الظاهرة فعليًا، وبتتوقف لما الأدمن يسيب الشاشة - أقل استهلاك ممكن من غير ما
+  // يأثر على اللحظية وقت الاستخدام الفعلي.
+  if (page==='drivers') { startDriversListener(); } else { stopDriversListener(); }
+  if (page==='users') { startCustomersListener(); } else { stopCustomersListener(); }
+  if (page==='stores') { startMerchantsListener(); } else { stopMerchantsListener(); }
+  // جديد (Final Targeted Review - البند 1): طلبات انضمام التجار + الطلبات الحرة، نفس نمط عمر الشاشة
+  if (page==='requests') { startIncomingRequestsListeners(); } else { stopIncomingRequestsListeners(); }
 }
-export function filtDrvs(st,btn){document.querySelectorAll('.fc2').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('#adm-drvs-list .drv-row2').forEach(r=>r.style.display=(st==='all'||r.dataset.st===st)?'flex':'none');}
 export async function saveComm(){
   const v=parseInt(document.getElementById('comm-val').value)||10;
   try{
@@ -609,5 +805,6 @@ export async function delCoupon(id) {
 export function registerAdminResets() {
   onListenersCleared(() => {
   adminOrdersUnsub = null; adminUsersUnsub = null; auditLogUnsub = null; smProdsUnsub = null;
+  recentOrdersPager = null; allOrdsPager = null; drvsPager = null; storesPager = null;
   });
 }
