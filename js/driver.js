@@ -1,8 +1,9 @@
 // ===== driver.js — شاشات المندوب: GPS، الطلبات، معالج تسجيل مندوب جديد =====
 
 import { collection, db, doc, limit, orderBy, query, runTransaction, serverTimestamp, updateDoc, where } from './firebase.js';
-import { SC, SL, esc, escJs, onListenersCleared, onSnapshot, secureCloudinaryUpload, setLoad, showScreen, showToast } from './utils.js';
+import { SC, SL, esc, escJs, normalizeStatus, onListenersCleared, onSnapshot, secureCloudinaryUpload, setLoad, showScreen, showToast } from './utils.js';
 import { getNextRequestId } from './merchant.js';
+import { ORDER_STATUS, acceptOrderAsDriver, getDispatchQuery, transitionOrder } from './orders.js';
 
 // ===== GPS / LOCATION =====
 export function getLocation() {
@@ -66,7 +67,9 @@ export let newOrdersUnsub = null;
 export function listenNewOrders() {
   if (!window.CU) return;
   if (newOrdersUnsub) return;
-  const q = query(collection(db,'orders'), where('status','in',['new','accepted','preparing','ready']), where('driverId','==',null));
+  // جديد: الطلب دلوقتي بيظهر للمندوبين بس لما يبقى searching_driver (يعني بعد ما التاجر
+  // يوافق عليه فعليًا) - مش من لحظة إنشائه زي قبل كده. راجع orders.js -> getDispatchQuery().
+  const q = getDispatchQuery();
   newOrdersUnsub = onSnapshot(q, snap => {
     if (!snap.empty && window.onlineStatus) {
       const ord = snap.docs[0]; const o = ord.data();
@@ -98,16 +101,22 @@ export function loadDriverOrders() {
       const dt = o.createdAt?.toDate?o.createdAt.toDate():new Date();
       if (dt.toDateString()===today) { tOrd++; tEarn+=o.driverFee||0; }
       if ((now-dt)/(1000*60*60*24)<=7) { wOrd++; wEarn+=o.driverFee||0; }
+      // دورة المندوب الموحّدة (Order Engine): driver_assigned -> driver_arrived -> picked_up ->
+      // on_the_way -> delivered. normalizeStatus() بيطبّع أي حالة قديمة برضه (توافق عكسي).
+      const st = normalizeStatus(o.status);
+      let actionHtml = '';
+      if (st === ORDER_STATUS.DRIVER_ASSIGNED) actionHtml = `<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','${ORDER_STATUS.DRIVER_ARRIVED}')">وصلت للمتجر 📍</button>`;
+      else if (st === ORDER_STATUS.DRIVER_ARRIVED) actionHtml = `<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','${ORDER_STATUS.PICKED_UP}')">استلمت الطلب ✓</button>`;
+      else if (st === ORDER_STATUS.PICKED_UP) actionHtml = `<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','${ORDER_STATUS.ON_THE_WAY}')">في الطريق 🛵</button>`;
+      else if (st === ORDER_STATUS.ON_THE_WAY) actionHtml = `<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','${ORDER_STATUS.DELIVERED}')">سلّمت ✓</button>`;
+      else if (st === ORDER_STATUS.WAITING_MERCHANT || st === ORDER_STATUS.MERCHANT_ACCEPTED || st === ORDER_STATUS.SEARCHING_DRIVER) actionHtml = `<span style="font-size:11px;color:var(--mu);font-weight:600">⏳ بانتظار تجهيز التاجر</span>`;
+      else if (st === ORDER_STATUS.CANCELLED || st === ORDER_STATUS.MERCHANT_REJECTED) actionHtml = `<span style="font-size:11px;color:var(--danger);font-weight:700">❌ الطلب ملغي</span>`;
       html += `<div class="ord-card">
         <div class="ord-top"><span class="ord-id">#${d.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'جديد'}</span></div>
         <div class="ord-route"><div class="ord-pt"><div class="ol">الاستلام</div><div class="ov">${esc(o.storeName)||'--'}</div></div><span class="ord-arr">←</span><div class="ord-pt"><div class="ol">التوصيل</div><div class="ov">${esc(o.customerName)||'العميل'}</div></div></div>
+        ${o.customerPhone ? `<div style="display:flex;gap:8px;margin:6px 0"><button class="ha-btn ha-call" onclick="callStore('${escJs(o.customerPhone)}')">📞 اتصل بالعميل</button><button class="ha-btn ha-wa" onclick="openWA('${escJs(o.customerPhone)}','${escJs(o.customerName||'العميل')}')">💬 واتساب</button></div>` : ''}
         <div class="ord-foot"><div class="ord-earn">${o.driverFee||0} ج <small>أجر التوصيل</small></div>
-          <div style="display:flex;gap:5px">
-            ${o.status==='ready'?`<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','delivering')">استلمت ✓</button>`:''}
-            ${o.status==='delivering'?`<button class="mb2 mb-acc" onclick="updOrdStatus('${d.id}','done')">سلّمت ✓</button>`:''}
-            ${(o.status==='new'||o.status==='accepted'||o.status==='preparing')?`<span style="font-size:11px;color:var(--mu);font-weight:600">⏳ بانتظار تجهيز التاجر</span>`:''}
-            ${o.status==='cancelled'?`<span style="font-size:11px;color:var(--danger);font-weight:700">❌ الطلب ملغي من التاجر</span>`:''}
-          </div>
+          <div style="display:flex;gap:5px">${actionHtml}</div>
         </div>
       </div>`;
     });
@@ -126,22 +135,7 @@ export function loadDriverOrders() {
 export async function acceptOrd() {
   if (!window._pendingOrdId || !window.CU) return;
   try {
-    // جديد: استخدمنا Transaction عشان نتأكد إن المندوب مش مربوط بطلب تاني حاليًا
-    // (activeOrderId فاضي) قبل ما نعيّنه على الطلب ده - بيمنع قبول أكتر من طلب في نفس الوقت.
-    const orderRef = doc(db,'orders',window._pendingOrdId);
-    const userRef = doc(db,'users',window.CU.uid);
-    await runTransaction(db, async (t) => {
-      const uSnap = await t.get(userRef);
-      if (uSnap.data()?.activeOrderId) throw new Error('busy');
-      const oSnap = await t.get(orderRef);
-      if (oSnap.data()?.driverId) throw new Error('taken');
-      t.update(orderRef, {
-        driverId: window.CU.uid,
-        driverName: window.CUD?.name||'',
-        acceptedAt: serverTimestamp()
-      });
-      t.update(userRef, { activeOrderId: window._pendingOrdId });
-    });
+    await acceptOrderAsDriver(window._pendingOrdId, window.CU.uid, window.CUD?.name || '', window.CUD?.phone || '');
     document.getElementById('new-ord-banner').style.display='none';
     showToast('✅ تم قبول الطلب! توجه للمتجر','ok');
   } catch(e) {
@@ -151,16 +145,19 @@ export async function acceptOrd() {
   }
 }
 
+// خطوات المندوب الجديدة (Order Engine): وصل للمتجر -> استلم -> في الطريق -> تم التسليم.
+// كل استدعاء بيتحقق من الـ State Machine في orders.js قبل ما ينفذ (transitionOrder).
 export async function updOrdStatus(id, status) {
   try {
-    await updateDoc(doc(db,'orders',id), {status, updatedAt:serverTimestamp()});
-    // جديد: لما المندوب يخلّص الطلب، نفضّي activeOrderId عشان يقدر ياخد طلب جديد
-    if (status === 'done' && window.CU) {
+    const actor = { type: 'driver', uid: window.CU?.uid, name: window.CUD?.name };
+    await transitionOrder(id, status, actor);
+    // جديد: لما المندوب يخلّص الطلب (delivered)، نفضّي activeOrderId عشان يقدر ياخد طلب جديد
+    if (status === ORDER_STATUS.DELIVERED && window.CU) {
       await updateDoc(doc(db,'users',window.CU.uid), {activeOrderId: null}).catch(()=>{});
     }
-    const msgs = {preparing:'👨‍🍳 بدأت التحضير',ready:'📦 الطلب جاهز',delivering:'🛵 في الطريق للعميل',done:'✅ تم التسليم بنجاح!'};
+    const msgs = {driver_arrived:'📍 تم تسجيل وصولك للمتجر', picked_up:'📦 تم استلام الطلب', on_the_way:'🛵 في الطريق للعميل', delivered:'✅ تم التسليم بنجاح!'};
     showToast(msgs[status]||'تم التحديث','ok');
-  } catch(e) { showToast('حدث خطأ','err'); }
+  } catch(e) { showToast(e?.message==='invalid-transition' ? 'لا يمكن تنفيذ هذا الانتقال الآن' : 'حدث خطأ','err'); }
 }
 
 export function toggleOnline(el) {
