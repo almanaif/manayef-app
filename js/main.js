@@ -4,13 +4,15 @@
 import { db, auth, doc, getDoc, setDoc, serverTimestamp, onAuthStateChanged, getRedirectResult,
          isSignInWithEmailLink, signInWithEmailLink } from './firebase.js';
 import { Logger, initOfflineHandling, callCurrentStore, callStore, closeModal, filterProds, openNotifs, openWA, setLoad, showErr, showScreen, showToast, waCurrentStore } from './utils.js';
-import { addNotif, startNotifListener, registerNotificationsResets } from './notifications.js';
+import { markNotifRead, startNotifListener, registerNotificationsResets } from './notifications.js';
 import { initAdminMap, initTrackMap, toggleDriverMap, registerMapsResets } from './maps.js';
 import { goCheckout, openTrack, registerOrdersResets } from './orders.js';
 import { addCart, chgQty, custNav, doSearch, filterCat, loadBanners, loadCategories, loadCoupons, loadCustomerData, loadOrders, loadProducts, loadProductsByStore, loadStores, openAnyReq, openCart, quickReq, removeCartItem, renderProds, selMCat, selectRatingTarget, sendAnyReq, setStar, submitMerchant, submitRating, updateCartUI, registerCustomerResets } from './customer.js';
 import { acceptOrd, agreeTermsModal, buildChart, closeTermsModal, closeZoom, dregBack, dregGetLocation, dregInit, dregNext, dregRestart, dregSaveDraft, dregSetExp, drvNav, getLocation, listenNewOrders, loadDriverData, loadDriverOrders, openTermsModal, removeUploadedDoc, startGPS, submitDrvReg, toggleAgree, toggleOnline, updOrdStatus, uploadDoc, zoomDoc, registerDriverResets } from './driver.js';
-import { delProd, loadMerchantData, loadMerchantOrders, loadMerchantProds, openAddProd, saveProd, updOrdStatus2, registerMerchantResets } from './merchant.js';
-import { admAccDrv, admAccStore, admDelProd, admLogoutConfirm, admNav, admRejDrv, admRejStore, admUpdOrd, closeReasonModal, closeStoreManage, confirmReasonModal, delBanner, delCat, delCoupon, editBanner, editCat, editCoupon, filtDrvs, filtOrds, loadAdminData, loadAuditLog, logAudit, openAddBanner, openAddCat, openAddCoupon, openDrvModal, openEditProd, openReasonModal, openStoreManage, renderAdminBanners, renderAdminCats, renderAdminCoupons, saveBanner, saveCat, saveComm, saveCoupon, saveEditProd, smDeleteCover, smDeleteStore, smQuickActivate, smQuickPause, smSaveProfile, smSetAccountStatus, smSetOpen, smTab, smUploadCover, smUploadLogo, toggleProdAvail, uploadBannerImg, registerAdminResets } from './admin.js';
+import { delProd, loadMerchantData, loadMerchantOrders, loadMerchantProds, merchAcceptOrd, merchRejectOrd, openAddProd, saveProd, registerMerchantResets } from './merchant.js';
+import { admAccDrv, admAccStore, admDelProd, admLogoutConfirm, admNav, admRejDrv, admRejStore, admUpdOrd, closeReasonModal, closeStoreManage, confirmReasonModal, delBanner, delCat, delCoupon, editBanner, editCat, editCoupon, filtDrvs, filtOrds, loadAdminData, loadAuditLog, loadMoreDrivers, loadMoreMerchants, loadMoreOrders, logAudit, openAddBanner, openAddCat, openAddCoupon, openDrvModal, openEditProd, openReasonModal, openStoreManage, renderAdminBanners, renderAdminCats, renderAdminCoupons, saveBanner, saveCat, saveComm, saveCoupon, saveEditProd, smDeleteCover, smDeleteStore, smQuickActivate, smQuickPause, smSaveProfile, smSetAccountStatus, smSetOpen, smTab, smUploadCover, smUploadLogo, toggleProdAvail, uploadBannerImg, registerAdminResets } from './admin.js';
+import { onCustomerSearchInput, filterCustomersByStatus, loadMoreCustomers, openCustomerDetails, closeCustomerDetails, saveCustomerBasicInfo, toggleCustomerBlock, softDeleteCustomer, loadMoreCustomerOrders, registerCustomerListReset } from './admin-customers.js';
+import { loadMoreMerchantRequests, loadMoreAnyRequests, acceptMerchantRequest, rejectMerchantRequest, addNoteToMerchantRequest, acceptAnyRequest, rejectAnyRequest, addNoteToAnyRequest } from './admin-requests.js';
 import { doLogin, doLogout, doRegister, hideLoading, loginGoogle, pickEntryType, routeUser, selectRole, showEmailOTP, showForgot, switchTab, syncToHubSpot, updateEntryLabel } from './auth.js';
 
 // كل موديول عنده أعلام subscribe (زي productsUnsub) بيسجّل دالة تصفيرها هنا -- لازم يتنفذوا
@@ -24,6 +26,7 @@ registerMapsResets();
 registerDriverResets();
 registerMerchantResets();
 registerAdminResets();
+registerCustomerListReset();
 
 // ===== EXPOSE TO WINDOW =====
 // app.js (اتقسم دلوقتي لموديولات) بيتحمّل كـ ES module، فالدوال في الأعلى مش بتبقى
@@ -31,7 +34,7 @@ registerAdminResets();
 // window بس. من غير الكتلة دي، أي زرار في التطبيق هيفشل بصمت.
 Object.assign(window, {
   callCurrentStore, callStore, closeModal, filterProds, openNotifs, openWA, setLoad, showErr,
-  showScreen, showToast, waCurrentStore, addNotif, startNotifListener, initAdminMap,
+  showScreen, showToast, waCurrentStore, markNotifRead, startNotifListener, initAdminMap,
   initTrackMap, toggleDriverMap, goCheckout, openTrack, addCart, chgQty, custNav, doSearch,
   filterCat, loadBanners, loadCategories, loadCoupons, loadCustomerData, loadOrders,
   loadProducts, loadProductsByStore, loadStores, openAnyReq, openCart, quickReq,
@@ -41,10 +44,10 @@ Object.assign(window, {
   dregSaveDraft, dregSetExp, drvNav, getLocation, listenNewOrders, loadDriverData,
   loadDriverOrders, openTermsModal, removeUploadedDoc, startGPS, submitDrvReg, toggleAgree,
   toggleOnline, updOrdStatus, uploadDoc, zoomDoc, delProd, loadMerchantData,
-  loadMerchantOrders, loadMerchantProds, openAddProd, saveProd, updOrdStatus2, admAccDrv,
+  loadMerchantOrders, loadMerchantProds, merchAcceptOrd, merchRejectOrd, openAddProd, saveProd, admAccDrv,
   admAccStore, admDelProd, admLogoutConfirm, admNav, admRejDrv, admRejStore, admUpdOrd,
   closeReasonModal, closeStoreManage, confirmReasonModal, delBanner, delCat, delCoupon,
-  editBanner, editCat, editCoupon, filtDrvs, filtOrds, loadAdminData, loadAuditLog, logAudit,
+  editBanner, editCat, editCoupon, filtDrvs, filtOrds, loadAdminData, loadAuditLog, loadMoreCustomers, loadMoreDrivers, loadMoreMerchants, loadMoreOrders, logAudit, onCustomerSearchInput, filterCustomersByStatus, openCustomerDetails, closeCustomerDetails, saveCustomerBasicInfo, toggleCustomerBlock, softDeleteCustomer, loadMoreCustomerOrders, loadMoreMerchantRequests, loadMoreAnyRequests, acceptMerchantRequest, rejectMerchantRequest, addNoteToMerchantRequest, acceptAnyRequest, rejectAnyRequest, addNoteToAnyRequest,
   openAddBanner, openAddCat, openAddCoupon, openDrvModal, openEditProd, openReasonModal,
   openStoreManage, renderAdminBanners, renderAdminCats, renderAdminCoupons, saveBanner,
   saveCat, saveComm, saveCoupon, saveEditProd, smDeleteCover, smDeleteStore, smQuickActivate,
