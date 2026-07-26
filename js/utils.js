@@ -27,11 +27,29 @@ export function clearAllListeners() {
 
 
 // ===== ORDER STATUS CONSTANTS =====
-export const SL = {new:'جديد',accepted:'تم القبول',preparing:'جاري التحضير',ready:'جاهز',delivering:'في الطريق',done:'تم التسليم',cancelled:'ملغي'};
-export const SC = {new:'sb sb-new',accepted:'sb sb-accepted',preparing:'sb sb-preparing',ready:'sb sb-ready',delivering:'sb sb-delivering',done:'sb sb-done',cancelled:'sb sb-cancelled'};
+// ملحوظة: الحالات القديمة (new/accepted/preparing/ready/delivering/done) اتسابت هنا زي ما هي
+// عشان أي طلبات موجودة بالفعل في قاعدة البيانات بالحالات دي تفضل تتعرض صح. الحالات الجديدة
+// (created/waiting_merchant/...) هي اللي بقى يستخدمها Order Engine الجديد في orders.js.
+export const SL = {new:'جديد',accepted:'تم القبول',preparing:'جاري التحضير',ready:'جاهز',delivering:'في الطريق',done:'تم التسليم',cancelled:'ملغي',
+  created:'تم إنشاء الطلب', waiting_merchant:'بانتظار موافقة التاجر', merchant_accepted:'تم قبول التاجر',
+  merchant_rejected:'تم رفض الطلب من التاجر', searching_driver:'جاري البحث عن مندوب',
+  driver_assigned:'تم تعيين مندوب', driver_arrived:'المندوب وصل للمتجر', picked_up:'تم استلام الطلب',
+  on_the_way:'في الطريق إليك', delivered:'تم التسليم'};
+export const SC = {new:'sb sb-new',accepted:'sb sb-accepted',preparing:'sb sb-preparing',ready:'sb sb-ready',delivering:'sb sb-delivering',done:'sb sb-done',cancelled:'sb sb-cancelled',
+  created:'sb sb-new', waiting_merchant:'sb sb-new', merchant_accepted:'sb sb-accepted',
+  merchant_rejected:'sb sb-cancelled', searching_driver:'sb sb-accepted', driver_assigned:'sb sb-preparing',
+  driver_arrived:'sb sb-preparing', picked_up:'sb sb-ready', on_the_way:'sb sb-delivering', delivered:'sb sb-done'};
+// STEPS القديمة (لسه موجودة، مفيش حاجة تانية بتعتمد عليها غير الطلبات القديمة جدًا لو لقيناها)
 export const STEPS = ['new','accepted','preparing','ready','delivering','done'];
 export const STEP_ICONS = ['🆕','✅','👨‍🍳','📦','🛵','✅'];
 export const STEP_LABELS = ['جديد','تم القبول','جاري التحضير','جاهز للاستلام','في الطريق','تم التسليم'];
+// خطوات التتبع الجديدة (Order Engine) — دي اللي شاشة تتبع الطلب بتستخدمها دلوقتي
+export const NEW_STEPS = ['waiting_merchant','merchant_accepted','searching_driver','driver_assigned','driver_arrived','picked_up','on_the_way','delivered'];
+export const NEW_STEP_ICONS = ['🕐','🏪','🔎','🛵','📍','📦','🚴','✅'];
+export const NEW_STEP_LABELS = ['بانتظار التاجر','تم قبول التاجر','بحث عن مندوب','تم تعيين مندوب','وصل المندوب','تم الاستلام','في الطريق','تم التسليم'];
+// تطبيع حالة أي طلب قديم لأقرب حالة في النظام الجديد (لأغراض العرض فقط، مفيش أي تعديل على البيانات المخزنة)
+const LEGACY_STATUS_MAP = {new:'waiting_merchant',accepted:'merchant_accepted',preparing:'searching_driver',ready:'driver_assigned',delivering:'on_the_way',done:'delivered',cancelled:'cancelled'};
+export function normalizeStatus(status) { return LEGACY_STATUS_MAP[status] || status; }
 
 
 // ===== LOGGER (بديل موحد لـ console.log) =====
