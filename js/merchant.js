@@ -1,8 +1,9 @@
 // ===== merchant.js — شاشات التاجر: الطلبات والمنتجات =====
 
-import { addDoc, collection, db, deleteDoc, doc, limit, orderBy, query, runTransaction, serverTimestamp, updateDoc, where } from './firebase.js';
-import { SC, SL, closeModal, esc, onListenersCleared, onSnapshot, showToast } from './utils.js';
+import { addDoc, collection, db, deleteDoc, doc, limit, orderBy, query, runTransaction, serverTimestamp, where } from './firebase.js';
+import { SC, SL, closeModal, esc, normalizeStatus, onListenersCleared, onSnapshot, showToast } from './utils.js';
 import { logAudit, openEditProd } from './admin.js';
+import { ORDER_STATUS, merchantRespond, transitionOrder } from './orders.js';
 
 // ===== MERCHANT FUNCTIONS =====
 export function loadMerchantData() {
@@ -25,14 +26,15 @@ export function loadMerchantOrders() {
       const o={...d.data(),id:d.id};
       const dt=o.createdAt?.toDate?o.createdAt.toDate():new Date();
       if(dt.toDateString()===today){tOrd++;tRev+=o.total||0;}
+      const st = normalizeStatus(o.status);
       html+=`<div class="merch-ord-card">
         <div class="merch-ord-top"><span style="font-size:11px;font-weight:700;color:var(--mu)">#${d.id.slice(-6).toUpperCase()}</span><span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'جديد'}</span></div>
         <div style="font-size:12px;color:var(--mu)">👤 ${esc(o.customerName)||'عميل'} • ${o.total||0} ج</div>
         <div style="font-size:11px;margin-top:4px">${(o.items||[]).map(i=>`${esc(i.name)} x${i.qty}`).join('، ')}</div>
         <div class="merch-ord-acts">
-          ${o.status==='new'?`<button class="mo-btn mo-acc" onclick="updOrdStatus2('${d.id}','accepted')">✅ قبول</button><button class="mo-btn mo-rej" onclick="updOrdStatus2('${d.id}','cancelled')">❌ رفض</button>`:''}
-          ${o.status==='accepted'?`<button class="mo-btn mo-ready" onclick="updOrdStatus2('${d.id}','preparing')">👨‍🍳 بدأت التحضير</button>`:''}
-          ${o.status==='preparing'?`<button class="mo-btn mo-ready" onclick="updOrdStatus2('${d.id}','ready')">📦 جاهز</button>`:''}
+          ${st===ORDER_STATUS.WAITING_MERCHANT?`<button class="mo-btn mo-acc" onclick="merchAcceptOrd('${d.id}')">✅ قبول</button><button class="mo-btn mo-rej" onclick="merchRejectOrd('${d.id}')">❌ رفض</button>`:''}
+          ${(st===ORDER_STATUS.MERCHANT_ACCEPTED||st===ORDER_STATUS.SEARCHING_DRIVER)?`<span style="font-size:11px;color:var(--mu);font-weight:600">🔎 جاري البحث عن مندوب...</span>`:''}
+          ${(st===ORDER_STATUS.DRIVER_ASSIGNED||st===ORDER_STATUS.DRIVER_ARRIVED)?`<span style="font-size:11px;color:var(--ok);font-weight:600">🛵 المندوب في الطريق للاستلام</span>`:''}
         </div>
       </div>`;
     });
@@ -42,9 +44,19 @@ export function loadMerchantOrders() {
   });
 }
 
-export async function updOrdStatus2(id,status) {
-  try { await updateDoc(doc(db,'orders',id),{status,updatedAt:serverTimestamp()}); showToast('✅ تم تحديث حالة الطلب','ok'); }
-  catch(e){ showToast('حدث خطأ','err'); }
+export async function merchAcceptOrd(id) {
+  try {
+    const actor = { type: 'merchant', uid: window.CU?.uid, name: window.CUD?.storeName || window.CUD?.name };
+    await merchantRespond(id, true, actor);
+    showToast('✅ تم قبول الطلب، جاري البحث عن مندوب','ok');
+  } catch(e) { showToast(e?.message==='invalid-transition' ? 'تم اتخاذ إجراء على هذا الطلب بالفعل' : 'حدث خطأ','err'); }
+}
+export async function merchRejectOrd(id) {
+  try {
+    const actor = { type: 'merchant', uid: window.CU?.uid, name: window.CUD?.storeName || window.CUD?.name };
+    await merchantRespond(id, false, actor);
+    showToast('تم رفض الطلب','ok');
+  } catch(e) { showToast(e?.message==='invalid-transition' ? 'تم اتخاذ إجراء على هذا الطلب بالفعل' : 'حدث خطأ','err'); }
 }
 
 export let merchantProdsUnsub = null;
