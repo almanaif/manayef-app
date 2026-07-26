@@ -1,8 +1,8 @@
 // ===== customer.js — شاشات العميل: تصفح المتاجر/المنتجات، السلة، الطلبات، التقييم، طلبات عامة =====
 
 import { addDoc, collection, db, limit, orderBy, query, serverTimestamp, where } from './firebase.js';
-import { SC, SL, STEPS, STEP_ICONS, STEP_LABELS, callStore, closeModal, debounce, esc, escJs, filterProds, onListenersCleared, onSnapshot, openWA, showScreen, showToast } from './utils.js';
-import { openTrack } from './orders.js';
+import { SC, SL, NEW_STEPS, NEW_STEP_ICONS, NEW_STEP_LABELS, callStore, closeModal, debounce, esc, escJs, filterProds, normalizeStatus, onListenersCleared, onSnapshot, openWA, showScreen, showToast } from './utils.js';
+import { ORDER_STATUS, openTrack } from './orders.js';
 
 // ===== PRODUCTS LOADER (from Firestore) =====
 export let PRODS = [];
@@ -302,18 +302,20 @@ export function loadOrders() {
       let html = '';
       snap.forEach(d => {
         const o = {...d.data(), id:d.id};
-        const si = STEPS.indexOf(o.status||'new');
+        const st = normalizeStatus(o.status);
+        const isEnded = st === ORDER_STATUS.CANCELLED || st === ORDER_STATUS.MERCHANT_REJECTED;
+        const si = NEW_STEPS.indexOf(st);
+        const stepsHtml = isEnded
+          ? `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;color:var(--danger);font-size:12px;font-weight:700">❌ ${st===ORDER_STATUS.MERCHANT_REJECTED?'تم رفض الطلب من المتجر':'تم إلغاء الطلب'}</div>`
+          : NEW_STEPS.map((s,i) => {
+              return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:38px"><div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid ${i<=si?i<si?'var(--ok)':'var(--p)':'var(--border)'};background:${i<si?'var(--ok)':i===si?'var(--p)':'#fff'};color:${i<=si?'#fff':'var(--mu)'}">${NEW_STEP_ICONS[i]}</div><div style="font-size:8px;color:${i===si?'var(--p)':'var(--mu)'};text-align:center;margin-top:2px;white-space:nowrap;font-weight:${i===si?800:600}">${NEW_STEP_LABELS[i]}</div></div>`;
+            }).join('');
         html += `<div class="order-track-card" style="background:#fff;border-radius:var(--r);padding:14px;margin-bottom:10px;box-shadow:var(--sh);border:1px solid var(--border);cursor:pointer" onclick="openTrack('${d.id}')">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <span style="font-size:11px;font-weight:700;color:var(--mu)">#${d.id.slice(-6).toUpperCase()}</span>
             <span class="${SC[o.status]||'sb sb-new'}">${SL[o.status]||'جديد'}</span>
           </div>
-          <div style="display:flex;gap:4px;margin-bottom:8px;overflow-x:auto">
-            ${STEPS.map((s,i) => {
-              const cls = i<si?'done':i===si?'active':'';
-              return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:38px"><div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid ${i<=si?i<si?'var(--ok)':'var(--p)':'var(--border)'};background:${i<si?'var(--ok)':i===si?'var(--p)':'#fff'};color:${i<=si?'#fff':'var(--mu)'}">${STEP_ICONS[i]}</div><div style="font-size:8px;color:${i===si?'var(--p)':'var(--mu)'};text-align:center;margin-top:2px;white-space:nowrap;font-weight:${i===si?800:600}">${STEP_LABELS[i]}</div></div>`;
-            }).join('')}
-          </div>
+          <div style="display:flex;gap:4px;margin-bottom:8px;overflow-x:auto">${stepsHtml}</div>
           <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);font-size:12px">
             <span style="color:var(--mu)">🏪 ${esc(o.storeName)||'--'}</span>
             <span style="font-size:14px;font-weight:900;color:var(--p)">${o.total||0} ج</span>
@@ -372,7 +374,7 @@ export async function submitMerchant(){
     await addDoc(collection(db,'merchant_requests'),{storeName:name,phone,address:addr,status:'pending',createdAt:serverTimestamp()});
     showToast('✅ تم إرسال طلب الانضمام! سنتواصل خلال 24 ساعة','ok');
     setTimeout(()=>showScreen('screen-entry'),2500);
-  }catch(e){showToast('✅ تم إرسال طلبك! سنتواصل معك','ok');setTimeout(()=>showScreen('screen-entry'),2000);}
+  }catch(e){showToast('❌ حدث خطأ أثناء إرسال الطلب، حاول مرة أخرى','err');console.error('[submitMerchant]',e);}
 }
 
 
@@ -385,7 +387,7 @@ export async function sendAnyReq(){
   try{
     await addDoc(collection(db,'any_requests'),{customerId:window.CU?.uid||'guest',customerName:window.CUD?.name||'عميل',request:txt,address:document.getElementById('any-req-addr').value,status:'new',createdAt:serverTimestamp()});
     closeModal('any-req-modal');showToast('✅ تم إرسال طلبك! سيتواصل معك المندوب قريباً','ok');
-  }catch(e){closeModal('any-req-modal');showToast('✅ تم إرسال طلبك!','ok');}
+  }catch(e){closeModal('any-req-modal');showToast('❌ حدث خطأ أثناء إرسال الطلب، حاول مرة أخرى','err');console.error('[sendAnyReq]',e);}
 }
 
 
