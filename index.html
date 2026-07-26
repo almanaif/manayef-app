@@ -143,6 +143,16 @@
   </div>
 </div>
 
+<!-- جديد (Sprint 3 - القرار 1، حظر فعلي): شاشة بتظهر بس للعميل اللي status=='blocked' -->
+<div id="screen-blocked" class="screen">
+  <div style="padding:40px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;min-height:100vh;justify-content:center">
+    <div style="font-size:48px">🚫</div>
+    <h2 style="margin:0">حسابك موقوف مؤقتًا</h2>
+    <p style="color:var(--mu);font-size:13px;max-width:280px">تم إيقاف حسابك من الإدارة. لو تعتقد إن ده حصل بالغلط، تواصل معانا.</p>
+    <button class="btn-p" onclick="doLogout()" style="background:var(--s);margin-top:10px">تسجيل الخروج</button>
+  </div>
+</div>
+
 <!-- ===== CUSTOMER SCREEN ===== -->
 <div id="screen-customer" class="screen">
   <div class="app-header">
@@ -425,6 +435,7 @@
     <button class="adm-nb" onclick="admNav('coupons',this)">🎟️ قسائم</button>
     <button class="adm-nb" onclick="admNav('map',this)">🗺️ خريطة</button>
     <button class="adm-nb" onclick="admNav('audit',this)">🧾 سجل</button>
+    <button class="adm-nb" onclick="admNav('requests',this)">📥 طلبات واردة</button>
   </div>
 
   <!-- Dashboard -->
@@ -449,12 +460,12 @@
   <!-- Drivers -->
   <div id="adm-drivers" class="adm-content" style="display:none">
     <div class="adm-card"><h3>مناديب منتظرين <span id="adm-pend-c">0</span></h3><div id="adm-pend-drvs"></div></div>
-    <div class="adm-card"><h3>كل المناديب <span id="adm-drvs-c">0</span><div class="fb2" style="margin-top:8px"><button class="fc2 active" onclick="filtDrvs('all',this)">الكل</button><button class="fc2" onclick="filtDrvs('active',this)">✅ نشط</button><button class="fc2" onclick="filtDrvs('pending',this)">⏳ معلق</button></div></h3><div id="adm-drvs-list"></div></div>
+    <div class="adm-card"><h3>كل المناديب <span id="adm-drvs-c">0</span><div class="fb2" style="margin-top:8px"><button class="fc2 active" onclick="filtDrvs('all',this)">الكل</button><button class="fc2" onclick="filtDrvs('active',this)">✅ نشط</button><button class="fc2" onclick="filtDrvs('pending',this)">⏳ معلق</button></div></h3><div id="adm-drvs-list"></div><button id="adm-drvs-more" onclick="loadMoreDrivers()" style="display:none;width:100%;padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:var(--r);background:#fff;font-size:12px;font-weight:700;color:var(--p)">تحميل المزيد ⬇️</button></div>
   </div>
 
   <!-- Stores -->
   <div id="adm-stores" class="adm-content" style="display:none">
-    <div class="adm-card"><h3>المتاجر <span id="adm-stores-c">0</span></h3><div id="adm-stores-list"></div></div>
+    <div class="adm-card"><h3>المتاجر <span id="adm-stores-c">0</span></h3><div id="adm-stores-list"></div><button id="adm-stores-more" onclick="loadMoreMerchants()" style="display:none;width:100%;padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:var(--r);background:#fff;font-size:12px;font-weight:700;color:var(--p)">تحميل المزيد ⬇️</button></div>
   </div>
 
   <!-- Orders -->
@@ -471,12 +482,17 @@
         <button class="fc2" onclick="filtOrds('cancelled',this)">❌ ملغي</button>
       </div>
       <div id="adm-all-ords"></div>
+      <button id="adm-ords-more" onclick="loadMoreOrders()" style="display:none;width:100%;padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:var(--r);background:#fff;font-size:12px;font-weight:700;color:var(--p)">تحميل المزيد ⬇️</button>
     </div>
   </div>
 
   <!-- Users -->
   <div id="adm-users" class="adm-content" style="display:none">
-    <div class="adm-card"><h3>العملاء <span id="adm-users-c">0</span></h3><div id="adm-users-list"></div></div>
+    <div class="adm-card">
+      <h3>العملاء <span id="adm-users-c">0</span></h3>
+      <input type="text" id="adm-cust-search" class="inp" placeholder="🔍 دوّر بالاسم أو الهاتف أو البريد الإلكتروني" oninput="onCustomerSearchInput(this.value)" style="margin:8px 0">
+      <div class="fb2"><button class="fc2 active" data-status="all" onclick="filterCustomersByStatus('all',this)">الكل</button><button class="fc2" data-status="active" onclick="filterCustomersByStatus('active',this)">✅ نشط</button><button class="fc2" data-status="blocked" onclick="filterCustomersByStatus('blocked',this)">🚫 محظور</button></div>
+      <div id="adm-users-list"></div><button id="adm-users-more" onclick="loadMoreCustomers()" style="display:none;width:100%;padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:var(--r);background:#fff;font-size:12px;font-weight:700;color:var(--p)">تحميل المزيد ⬇️</button></div>
   </div>
 
   <!-- Finance -->
@@ -526,6 +542,19 @@
   <!-- Audit Log -->
   <div id="adm-audit" class="adm-content" style="display:none">
     <div class="adm-card"><h3>سجل عمليات الإدارة</h3><div id="adm-audit-list"></div></div>
+  </div>
+
+  <div id="adm-requests" class="adm-content" style="display:none">
+    <div class="adm-card">
+      <h3>📥 طلبات انضمام التجار</h3>
+      <div id="adm-merchreq-list"></div>
+      <button id="adm-merchreq-more" onclick="loadMoreMerchantRequests()" style="display:none;width:100%;padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:var(--r);background:#fff;font-size:12px;font-weight:700;color:var(--p)">تحميل المزيد ⬇️</button>
+    </div>
+    <div class="adm-card">
+      <h3>📥 الطلبات الحرة</h3>
+      <div id="adm-anyreq-list"></div>
+      <button id="adm-anyreq-more" onclick="loadMoreAnyRequests()" style="display:none;width:100%;padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:var(--r);background:#fff;font-size:12px;font-weight:700;color:var(--p)">تحميل المزيد ⬇️</button>
+    </div>
   </div>
 
   <div class="bottom-nav" style="display:none"></div>
@@ -745,6 +774,57 @@
     <div class="modal-acts">
       <button class="btn-ok" onclick="saveEditProd()">حفظ</button>
       <button class="btn-outline" onclick="closeModal('edit-prod-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CUSTOMER DETAILS (Sprint 3 - Side Panel) ===== -->
+<div class="screen" id="screen-cust-detail" style="display:none">
+  <div class="adm-top"><button class="icon-btn" onclick="closeCustomerDetails()" style="color:#fff;background:rgba(255,255,255,.1)">→</button><div class="adm-logo" id="cd-title">تفاصيل العميل</div><span style="width:36px"></span></div>
+
+  <div class="adm-content" style="display:block">
+    <div class="adm-card">
+      <h3>البيانات الأساسية</h3>
+      <div class="inp-g"><label>الاسم</label><input type="text" id="cd-name" class="inp"></div>
+      <div class="inp-g"><label>الهاتف</label><input type="text" id="cd-phone" class="inp"></div>
+      <div class="inp-g"><label>العنوان</label><input type="text" id="cd-address" class="inp"></div>
+      <div class="inp-g"><label>البريد الإلكتروني (غير قابل للتعديل)</label><input type="text" id="cd-email" class="inp" disabled></div>
+      <div style="font-size:11px;color:var(--mu);margin-top:4px">📅 تاريخ التسجيل: <span id="cd-created">--</span></div>
+      <button class="btn-ok" onclick="saveCustomerBasicInfo()" style="margin-top:10px;width:100%">حفظ التعديلات</button>
+    </div>
+
+    <div class="adm-card">
+      <h3>الإحصائيات (KPIs)</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+        <div>🧾 عدد الطلبات: <strong id="cd-kpi-ordcount">--</strong></div>
+        <div>💰 إجمالي الإنفاق: <strong id="cd-kpi-spend">--</strong></div>
+        <div>🕐 آخر طلب: <strong id="cd-kpi-lastord">--</strong></div>
+        <div>📶 آخر نشاط: <strong id="cd-kpi-lastactive">غير متتبَّع حاليًا</strong></div>
+      </div>
+    </div>
+
+    <div class="adm-card">
+      <h3>سجل الطلبات</h3>
+      <div id="cd-orders-list"></div>
+      <button id="cd-orders-more" onclick="loadMoreCustomerOrders()" style="display:none;width:100%;padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:var(--r);background:#fff;font-size:12px;font-weight:700;color:var(--p)">تحميل المزيد ⬇️</button>
+    </div>
+
+    <div class="adm-card">
+      <h3>إجراءات إدارية</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="mb2 mb-view" onclick="callStore(document.getElementById('cd-phone').value)">📞 اتصال</button>
+        <button class="mb2 mb-view" onclick="openWA(document.getElementById('cd-phone').value,document.getElementById('cd-name').value)">💬 واتساب</button>
+        <button class="mb2 mb-view" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('cd-phone').value);showToast('تم نسخ الرقم','ok')">📋 نسخ الرقم</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="mb2 mb-acc" id="cd-block-btn" onclick="toggleCustomerBlock()">🚫 حظر العميل</button>
+        <button class="mb2 mb-rej" onclick="softDeleteCustomer()">🗑️ حذف ناعم</button>
+      </div>
+    </div>
+
+    <div class="adm-card" style="opacity:.55">
+      <h3>CRM (قريبًا)</h3>
+      <p style="font-size:12px;color:var(--mu)">ملاحظات الإدارة، التصنيفات، وسجل التواصل مع العميل — هتُضاف في مرحلة لاحقة بعد إطلاق النسخة الأولى.</p>
     </div>
   </div>
 </div>
