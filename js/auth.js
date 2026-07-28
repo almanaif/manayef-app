@@ -104,13 +104,10 @@ export async function doRegister() {
     pass = document.getElementById('r-store-pass')?.value;
     if (!storeName||!email||!pass) { showErr('يرجى تعبئة اسم المتجر والبريد وكلمة المرور'); return; }
     data = { name:ownerName, storeName, storePhone, ownerPhone, address:storeAddr, email, role, points:0, status:'pending', docs:window.uploadedDocs||{}, createdAt:serverTimestamp() };  } else if (role === 'driver') {
-    const fullName = document.getElementById('r-drv-name')?.value?.trim();
-    const phone = document.getElementById('r-drv-phone')?.value?.trim();
-    const address = document.getElementById('r-drv-addr')?.value?.trim();
     email = document.getElementById('r-drv-mail')?.value?.trim();
     pass = document.getElementById('r-drv-pass')?.value;
-    if (!fullName||!email||!pass) { showErr('يرجى تعبئة الاسم والبريد وكلمة المرور'); return; }
-    data = { name:fullName, phone, address, email, role, points:0, status:'pending', docs:window.uploadedDocs||{}, createdAt:serverTimestamp() };
+    if (!email||!pass) { showErr('يرجى تعبئة البريد وكلمة المرور'); return; }
+    data = { name:'', phone:'', address:'', email, role, points:0, status:'pending', docs:window.uploadedDocs||{}, createdAt:serverTimestamp() };
   }
   if (pass.length < 6) { showErr('كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
   setLoad('reg-btn','rsp',true);
