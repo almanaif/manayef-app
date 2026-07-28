@@ -54,9 +54,24 @@ export function loadDriverData() {
     if (ud.photoURL) {
       const av = document.getElementById('drv-av');
       if (av) av.innerHTML = `<img src="${esc(ud.photoURL)}" alt="">`;
+      const hdrAv = document.getElementById('drv-hdr-av');
+      if (hdrAv) hdrAv.innerHTML = `<img src="${esc(ud.photoURL)}" alt="">`;
     }
     const rn = document.getElementById('drv-rating-num');
     if (rn) rn.textContent = (ud.rating!=null ? ud.rating : 5.0).toFixed(1);
+    const hdrRn = document.getElementById('drv-hdr-rating-num');
+    if (hdrRn) hdrRn.textContent = (ud.rating!=null ? ud.rating : 5.0).toFixed(1);
+    const ratingVal = (ud.rating!=null ? ud.rating : 5.0).toFixed(1);
+    const profRatingSub = document.getElementById('drv-prof-rating-sub');
+    if (profRatingSub) profRatingSub.textContent = `${ratingVal} من 5`;
+    const phoneLine = document.getElementById('drv-prof-phone-line');
+    if (phoneLine) { if (ud.phone) { document.getElementById('drv-prof-phone').textContent = ud.phone; phoneLine.style.display = 'flex'; } else phoneLine.style.display = 'none'; }
+    const statusBadge = document.getElementById('drv-prof-status');
+    if (statusBadge) {
+      const map = { active: ['✅ نشط','rgba(0,200,150,.2)','#00E5B0'], pending: ['⏳ قيد المراجعة','rgba(255,215,0,.2)','#FFD700'], rejected: ['❌ مرفوض','rgba(239,68,68,.2)','#EF4444'] };
+      const [txt,bg,color] = map[ud.status] || map.active;
+      statusBadge.textContent = txt; statusBadge.style.background = bg; statusBadge.style.color = color;
+    }
   }
   loadDriverOrders();
   buildChart();
@@ -127,6 +142,8 @@ export function loadDriverOrders() {
     document.getElementById('drv-w-earn').textContent = wEarn+' ج';
     document.getElementById('drv-wallet').textContent = wEarn+' ج';
     document.getElementById('drv-wallet2').textContent = wEarn+' ج';
+    const walletHome = document.getElementById('drv-wallet-home');
+    if (walletHome) walletHome.textContent = wEarn+' ج';
     document.getElementById('drv-total-ords').textContent = snap.size;
     document.getElementById('drv-month-earn').textContent = wEarn+' ج';
   });
@@ -248,11 +265,14 @@ export function dregValidateStep1(){
   if(!vtype){dregShowFieldErr('d-vtype','اختر نوع المركبة');ok=false;}
   return ok;
 }
+// جديد (Driver UX Polish - المهمة 2): رخصة القيادة بقت اختيارية. لو محتاج ترجعها إلزامية
+// لاحقًا، غيّر القيمة دي لـ true بس - مفيش أي منطق تاني محتاج تعديل.
+const LICENSE_REQUIRED = false;
 export function dregValidateStep2(){
-  const required=['d-id1','d-id2','d-photo','d-license'];
+  const required=['d-id1','d-id2','d-photo', ...(LICENSE_REQUIRED?['d-license']:[])];
   const missing=required.filter(id=>!(window.uploadedDocs&&window.uploadedDocs[id]));
   const err=document.getElementById('err-docs');
-  if(missing.length){ err.textContent='لازم ترفع كل المستندات الأربعة'; err.style.display='block'; return false; }
+  if(missing.length){ err.textContent='لازم ترفع كل المستندات المطلوبة'; err.style.display='block'; return false; }
   err.style.display='none'; return true;
 }
 export function dregValidateStep3(){
@@ -344,7 +364,7 @@ export async function dregGetLocation(){
 
 // --- مودال الشروط الكاملة ---
 const TERMS_FULL_TEXT = `1. المندوب مسؤول عن استلام وتسليم الطلبات في الوقت المحدد (خلال 30 دقيقة من وقت القبول تقريبًا).
-2. رسوم التوصيل تُحسب 15% من قيمة الطلب ويتحملها العميل، ويحصل عليها المندوب كاملة عند التسليم.
+2. تُطبق العمولات والرسوم وفق السياسة المعتمدة من إدارة التطبيق، ويحصل المندوب على أجر التوصيل كاملاً عند التسليم.
 3. المنصة غير مسؤولة عن أي تلف أو فقد للبضائع بعد استلامها من المتجر وحتى التسليم للعميل.
 4. يجب على المندوب الالتزام بقواعد المرور والسلامة العامة أثناء التوصيل.
 5. لا يجوز فتح أو التلاعب بمحتويات الطلب قبل تسليمه للعميل.
