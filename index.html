@@ -121,9 +121,7 @@
       </div>
       <!-- DRIVER -->
       <div id="reg-driver-fields" style="display:none">
-        <div class="inp-g"><label>الاسم الكامل</label><input type="text" id="r-drv-name" class="inp" placeholder="محمد أحمد"></div>
-        <div class="inp-g"><label>رقم التليفون</label><input type="tel" id="r-drv-phone" class="inp" placeholder="01xxxxxxxxx"></div>
-        <div class="inp-g"><label>العنوان</label><input type="text" id="r-drv-addr" class="inp" placeholder="شارع الجمهورية"></div>
+        <p style="font-size:12px;color:var(--mu);margin-bottom:10px">أنشئ حسابك بالبريد وكلمة المرور بس، وهنكمّل باقي بياناتك في الخطوة الجاية على طول</p>
         <div class="inp-g"><label>البريد الإلكتروني</label><input type="email" id="r-drv-mail" class="inp" placeholder="email@example.com"></div>
         <div class="inp-g"><label>كلمة المرور</label><input type="password" id="r-drv-pass" class="inp" minlength="6" placeholder="6 أحرف على الأقل"></div>
       </div>
@@ -199,11 +197,23 @@
 
   <div id="tab-profile" style="display:none">
     <div class="profile-page">
-      <div class="profile-hero"><div class="profile-av2" id="cust-av">👤</div><div><h3 id="cust-name">--</h3><p id="cust-email">--</p></div></div>
-      <div class="pts-card"><div><div class="pl">نقاط الولاء</div><div class="pv" id="pts-prof">0</div></div><div style="font-size:32px">⭐</div></div>
-      <div class="menu-list"><button class="menu-item" onclick="custNav('orders',document.querySelectorAll('#screen-customer .nav-item')[1])"><div class="mi-ic">📦</div><div class="mi-text"><strong>طلباتي</strong><small>تتبع طلباتك</small></div><span class="mi-arr">←</span></button>
-      <button class="menu-item" onclick="custNav('rewards',document.querySelectorAll('#screen-customer .nav-item')[2])"><div class="mi-ic">⭐</div><div class="mi-text"><strong>نقاط الولاء</strong><small><span id="pts-menu">0</span> نقطة</small></div><span class="mi-arr">←</span></button>
-      <button class="menu-item" onclick="doLogout()"><div class="mi-ic" style="background:rgba(239,68,68,.1)">🚪</div><div class="mi-text"><strong>تسجيل الخروج</strong><small>خروج من حسابك</small></div><span class="mi-arr">←</span></button></div>
+      <div class="acc-card">
+        <div class="profile-av2" id="cust-av">👤</div>
+        <div class="acc-info">
+          <h3 id="cust-name">--</h3>
+          <div class="acc-line" id="cust-phone-line" style="display:none">📞 <span id="cust-phone"></span></div>
+          <div class="acc-line" id="cust-address-line" style="display:none">📍 <span id="cust-address"></span></div>
+        </div>
+      </div>
+      <div class="acc-stats-row">
+        <div class="acc-stat"><div class="acc-stat-v" id="acc-ord-count">--</div><div class="acc-stat-l">📦 طلباتي</div></div>
+        <div class="acc-stat"><div class="acc-stat-v" id="pts-prof">0</div><div class="acc-stat-l">⭐ نقاط الولاء</div></div>
+      </div>
+      <div class="menu-list">
+        <button class="menu-item" onclick="custNav('orders',document.querySelectorAll('#screen-customer .nav-item')[1])"><div class="mi-ic">📦</div><div class="mi-text"><strong>طلباتي</strong><small>تتبع طلباتك</small></div><span class="mi-arr">←</span></button>
+        <button class="menu-item" onclick="custNav('rewards',document.querySelectorAll('#screen-customer .nav-item')[2])"><div class="mi-ic">⭐</div><div class="mi-text"><strong>نقاط الولاء</strong><small><span id="pts-menu">0</span> نقطة</small></div><span class="mi-arr">←</span></button>
+        <button class="menu-item" onclick="doLogout()"><div class="mi-ic" style="background:rgba(239,68,68,.1)">🚪</div><div class="mi-text"><strong>تسجيل الخروج</strong><small>خروج من حسابك</small></div><span class="mi-arr">←</span></button>
+      </div>
     </div>
   </div>
 
@@ -300,7 +310,7 @@
         <div id="d-id1-wrap"><div class="upload-box" onclick="uploadDoc('d-id1','صورة رقم قومي أمامي')" id="d-id1"><span class="doc-help" onclick="event.stopPropagation();showToast('لازم تكون الصورة واضحة وكل البيانات ظاهرة')">؟</span><div class="u-ic">🪪</div><p>صورة الرقم القومي من الأمام</p></div></div>
         <div id="d-id2-wrap"><div class="upload-box" onclick="uploadDoc('d-id2','صورة رقم قومي خلفي')" id="d-id2"><span class="doc-help" onclick="event.stopPropagation();showToast('لازم تكون الصورة واضحة وكل البيانات ظاهرة')">؟</span><div class="u-ic">🪪</div><p>صورة الرقم القومي من الخلف</p></div></div>
         <div id="d-photo-wrap"><div class="upload-box" onclick="uploadDoc('d-photo','صورة شخصية')" id="d-photo"><span class="doc-help" onclick="event.stopPropagation();showToast('صورة حديثة وواضحة للوجه')">؟</span><div class="u-ic">📷</div><p>صورة شخصية حديثة</p></div></div>
-        <div id="d-license-wrap"><div class="upload-box" onclick="uploadDoc('d-license','رخصة موتوسيكل')" id="d-license"><span class="doc-help" onclick="event.stopPropagation();showToast('رخصة القيادة سارية ووضحة')">؟</span><div class="u-ic">🏍️</div><p>رخصة قيادة المركبة</p></div></div>
+        <div id="d-license-wrap"><div class="upload-box" onclick="uploadDoc('d-license','رخصة موتوسيكل')" id="d-license"><span class="doc-help" onclick="event.stopPropagation();showToast('رخصة القيادة سارية ووضحة')">؟</span><div class="u-ic">🏍️</div><p>رخصة قيادة المركبة <small style="color:var(--mu);font-weight:400">(اختياري)</small></p></div></div>
         <div class="field-err" id="err-docs" style="text-align:center;margin-top:6px"></div>
       </div>
       <div class="dreg-nav"><button class="btn-s" onclick="dregBack()">رجوع</button><button class="btn-p" onclick="dregNext()">التالي</button></div>
@@ -312,7 +322,7 @@
       <div class="dreg-sec"><h3>بنود وشروط التوصيل</h3>
         <div class="terms-box">
           <div class="term-row"><span class="term-ck">📋</span><span class="term-txt">التزام بالمواعيد والتوصيل خلال 30 دقيقة</span></div>
-          <div class="term-row"><span class="term-ck">💰</span><span class="term-txt">رسوم التوصيل 15% من قيمة الطلب (يتحمل العميل)</span></div>
+          <div class="term-row"><span class="term-ck">💰</span><span class="term-txt">تُطبق العمولات والرسوم وفق السياسة المعتمدة من إدارة التطبيق</span></div>
           <div class="term-row"><span class="term-ck">🛡️</span><span class="term-txt">المنصة غير مسؤولة عن البضائع بعد التسليم</span></div>
         </div>
         <button type="button" class="btn-s" style="width:100%;margin-top:8px" onclick="openTermsModal()">📜 قراءة الشروط بالكامل</button>
@@ -333,7 +343,7 @@
       <div class="sr"><span>الحالة</span><span style="color:var(--y)">⏳ قيد المراجعة</span></div>
       <div class="sr"><span>متوسط وقت المراجعة</span><span>24-48 ساعة</span></div>
     </div>
-    <p style="font-size:12px;color:var(--mu)">📱 هيوصلك إشعار لما الحساب يِتقبل</p>
+    <p style="font-size:12px;color:var(--mu)">📱 هيوصلك إشعار فور مراجعة طلبك (قبول أو رفض)</p>
     <button class="btn-p" onclick="showScreen('screen-entry')" style="margin-top:20px">العودة للرئيسية</button>
   </div>
 
@@ -363,11 +373,18 @@
 <!-- ===== DRIVER APP ===== -->
 <div id="screen-driver" class="screen">
   <div class="drv-hdr">
-    <div class="drv-top"><div><h2 id="drv-name">أهلاً 👋</h2><p>ابدأ يومك</p></div><div class="online-tog" onclick="toggleOnline(this)"><div class="tog-dot on" id="tog-dot"></div><span id="tog-lbl" style="font-size:12px;font-weight:700;color:#fff">متاح</span></div></div>
+    <div class="drv-top">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <div class="drv-hdr-av" id="drv-hdr-av">👤</div>
+        <div style="min-width:0"><h2 id="drv-name">أهلاً 👋</h2><div class="drv-hdr-meta"><p style="margin:0">ابدأ يومك</p><span class="drv-hdr-rating">⭐ <span id="drv-hdr-rating-num">5.0</span></span></div></div>
+      </div>
+      <div class="online-tog" onclick="toggleOnline(this)"><div class="tog-dot on" id="tog-dot"></div><span id="tog-lbl" style="font-size:12px;font-weight:700;color:#fff">متاح</span></div>
+    </div>
     <div class="drv-stats">
       <div class="drv-stat"><span class="sv" id="drv-t-ords">0</span><span class="sl">طلبات اليوم</span></div>
       <div class="drv-stat"><span class="sv" id="drv-t-earn">0 ج</span><span class="sl">أرباح اليوم</span></div>
       <div class="drv-stat"><span class="sv" id="drv-w-ords">0</span><span class="sl">طلبات الأسبوع</span></div>
+      <div class="drv-stat"><span class="sv" id="drv-wallet-home">0 ج</span><span class="sl">المحفظة</span></div>
     </div>
   </div>
 
@@ -388,10 +405,21 @@
 
   <div id="drv-profile-tab" style="display:none">
     <div class="drv-profile">
-      <div class="profile-big"><div class="profile-av" id="drv-av">👤</div><div><h3 id="drv-prof-name">--</h3><p id="drv-prof-sub">مندوب توصيل</p></div></div>
-      <div class="wallet-card"><div class="wc-bal"><div class="wl">المحفظة</div><div class="wa" id="drv-wallet">0 ج</div></div><button class="withdraw-btn" onclick="showToast('سحب الأموال قريباً 💰')">سحب</button></div>
+      <div class="profile-big">
+        <div class="profile-av" id="drv-av">👤</div>
+        <div style="min-width:0">
+          <h3 id="drv-prof-name">--</h3>
+          <p id="drv-prof-sub">مندوب توصيل</p>
+          <div class="acc-line" id="drv-prof-phone-line" style="display:none;opacity:.85;font-size:11px;margin-top:3px">📞 <span id="drv-prof-phone"></span></div>
+          <span class="acc-status-badge" id="drv-prof-status" style="background:rgba(0,200,150,.2);color:#00E5B0">✅ نشط</span>
+        </div>
+      </div>
+      <div class="wallet-card">
+        <div class="wc-bal"><div class="wl">💰 المحفظة</div><div class="wa" id="drv-wallet">0 ج</div></div>
+        <button class="withdraw-btn" onclick="showToast('سحب الأموال قريباً 💰')">سحب الأرباح ←</button>
+      </div>
       <div class="menu-list">
-        <button class="menu-item" onclick="showToast('التقييمات قريباً')"><div class="mi-ic">⭐</div><div class="mi-text"><strong>تقييماتي</strong><small>4.8 من 5</small></div><span class="mi-arr">←</span></button>
+        <button class="menu-item" onclick="showToast('التقييمات قريباً')"><div class="mi-ic">⭐</div><div class="mi-text"><strong>تقييماتي</strong><small id="drv-prof-rating-sub">4.8 من 5</small></div><span class="mi-arr">←</span></button>
         <button class="menu-item" onclick="showToast('تغيير العنوان قريباً')"><div class="mi-ic">📍</div><div class="mi-text"><strong>عنواني</strong><small>تعديل العنوان الافتراضي</small></div><span class="mi-arr">←</span></button>
         <button class="menu-item" onclick="doLogout()"><div class="mi-ic" style="background:rgba(239,68,68,.1)">🚪</div><div class="mi-text"><strong>تسجيل الخروج</strong><small>خروج من حسابك</small></div><span class="mi-arr">←</span></button>
       </div>
