@@ -264,6 +264,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);overf
 /* MAP */
 .map-wrap{margin:0 14px 10px;border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
 #tracking-map{height:220px;width:100%}
+#ride-request-map{height:320px;width:100%}
 .map-card{background:#fff;padding:14px;border-radius:var(--r);margin:0 14px 10px;box-shadow:var(--sh)}
 .map-card h3{font-size:14px;font-weight:800;margin-bottom:10px}
 .map-info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
