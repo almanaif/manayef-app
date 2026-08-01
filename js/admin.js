@@ -5,6 +5,7 @@ import { SC, SL, closeModal, esc, escJs, normalizeStatus, onListenersCleared, on
 import { doLogout } from './auth.js';
 import { zoomDoc } from './driver.js';
 import { ORDER_STATUS, cancelOrder, listenSettings, transitionOrder } from './orders.js';
+import { getPricingConfig, savePricingConfig } from './pricing.js';
 import { initAdminMap } from './maps.js';
 import { createPaginatedListener } from './admin-pagination.js';
 import { startCustomersListener, stopCustomersListener, registerCustomerListReset } from './admin-customers.js';
@@ -29,15 +30,16 @@ const ADMIN_NEXT_STATUS = {
 export let adminOrdersUnsub = null, adminUsersUnsub = null;
 export async function loadAdminData() {
   if (adminOrdersUnsub) return;
+  loadPricingSettingsUI();
   adminOrdersUnsub = onSnapshot(collection(db,'orders'), snap => {
-    const today=new Date().toDateString();let tO=0,tR=0,allR=0,allC=0;
-    snap.forEach(d=>{const o=d.data();const dt=o.createdAt?.toDate?o.createdAt.toDate():new Date();allR+=o.total||0;allC+=o.commission||0;if(dt.toDateString()===today){tO++;tR+=o.total||0;}});
+    const today=new Date().toDateString();let tO=0,tR=0,allR=0,allC=0,allDrvPay=0;
+    snap.forEach(d=>{const o=d.data();const dt=o.createdAt?.toDate?o.createdAt.toDate():new Date();allR+=o.total||0;allC+=o.commission||0;allDrvPay+=o.driverFee||0;if(dt.toDateString()===today){tO++;tR+=o.total||0;}});
     document.getElementById('adm-t-ords').textContent=tO;
     document.getElementById('adm-t-rev').textContent=tR+' ج';
     document.getElementById('adm-total-rev').textContent=allR+' ج';
     document.getElementById('adm-total-comm').textContent=allC+' ج';
     document.getElementById('adm-comm-t').textContent=Math.round(tR*window.commRate/100)+' ج';
-    document.getElementById('adm-drv-pay').textContent=Math.round(allR*0.15)+' ج';
+    document.getElementById('adm-drv-pay').textContent=Math.round(allDrvPay)+' ج';
     document.getElementById('adm-avg-ord').textContent=(snap.size?Math.round(allR/snap.size):0)+' ج';
     const recs=[];snap.forEach(d=>recs.push({...d.data(),id:d.id}));
     const allOrds=document.getElementById('adm-t-allords'); if(allOrds) allOrds.textContent=snap.size;
@@ -632,6 +634,44 @@ export async function saveComm(){
     showToast('✅ تم تحديث العمولة إلى '+v+'%','ok');
   }catch(e){ showToast('حدث خطأ في حفظ العمولة','err'); }
 }
+
+// ===== جديد (Ride Service Integration Plan - الخطوة 2/3): إعدادات تسعير التوصيل =====
+let pricingUiLoaded = false;
+export async function loadPricingSettingsUI() {
+  if (pricingUiLoaded) return;
+  pricingUiLoaded = true;
+  try {
+    const cfg = await getPricingConfig();
+    const d = cfg.delivery || {};
+    document.getElementById('pr-del-base').value = d.baseFare ?? '';
+    document.getElementById('pr-del-perkm').value = d.perKmRate ?? 0;
+    document.getElementById('pr-del-min').value = d.minimumFare ?? '';
+    document.getElementById('pr-del-fee').value = d.bookingFee ?? 0;
+    document.getElementById('pr-version').textContent = cfg.pricingVersion || '--';
+  } catch (e) {
+    document.getElementById('pr-version').textContent = 'غير مُعدّة بعد - احفظ أول مرة عشان تفعّل التوصيل';
+  }
+}
+export async function savePricingSettings() {
+  const baseFare = parseFloat(document.getElementById('pr-del-base').value);
+  const minimumFare = parseFloat(document.getElementById('pr-del-min').value);
+  const perKmRate = parseFloat(document.getElementById('pr-del-perkm').value) || 0;
+  const bookingFee = parseFloat(document.getElementById('pr-del-fee').value) || 0;
+  if (isNaN(baseFare) || isNaN(minimumFare)) { showToast('يرجى تعبئة السعر الأساسي والحد الأدنى', 'err'); return; }
+  if (baseFare < 0 || minimumFare < 0 || perKmRate < 0 || bookingFee < 0) {
+    showToast('القيم لازم تكون صفر أو أكبر، مش سالبة', 'err'); return;
+  }
+  const deliveryCfg = { baseFare, perKmRate, minimumFare, bookingFee };
+  try {
+    // إعدادات المشاوير (ride) مش بتتلمس هنا خالص - savePricingConfig بقت بتعمل merge،
+    // فلو مش موجودة بتفضل مش موجودة لحد ما مرحلة Ride Service تحطها فعليًا.
+    const newVersion = await savePricingConfig(null, deliveryCfg);
+    document.getElementById('pr-version').textContent = newVersion;
+    logAudit('تحديث إعدادات تسعير التوصيل', `Base:${baseFare} Min:${minimumFare} v${newVersion}`);
+    showToast('✅ تم تحديث إعدادات التسعير', 'ok');
+  } catch (e) { showToast('حدث خطأ في حفظ التسعير', 'err'); console.error('[savePricingSettings]', e); }
+}
+
 
 
 // ===== ADMIN: CATEGORY MANAGEMENT =====
