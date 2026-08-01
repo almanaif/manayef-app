@@ -26,6 +26,17 @@ export function clearAllListeners() {
 }
 
 
+// ===== VEHICLE TYPES (جديد - Phase 2: Ride Foundation) =====
+// الأنواع المعتمدة الجديدة. bicycle اتسابت تحت في VEHICLE_LABELS بس عشان العرض فقط
+// (سائقين مسجلين بيها فعليًا من قبل) - ممنوع تُستخدم في أي أهلية Ride/Delivery جديدة،
+// زي ما اتحدد صراحة. محدش بيقرأ من هنا لسه (Schema جاهز للاستخدام في مراحل لاحقة فقط).
+export const VEHICLE_TYPES = ['motorcycle', 'tuktuk', 'car', 'tricycle'];
+export const VEHICLE_LABELS_AR = { motorcycle:'موتوسيكل', tuktuk:'توك توك', car:'عربية', tricycle:'تروسيكل', bicycle:'عجلة' };
+// أهلية كل نوع مركبة لكل خدمة - bicycle مش موجودة هنا عمدًا (Legacy فقط، مش خيار جديد)
+export const DELIVERY_ELIGIBLE_VEHICLES = ['motorcycle', 'tricycle'];
+export const RIDE_ELIGIBLE_VEHICLES = ['motorcycle', 'tuktuk', 'car'];
+
+
 // ===== ORDER STATUS CONSTANTS =====
 // ملحوظة: الحالات القديمة (new/accepted/preparing/ready/delivering/done) اتسابت هنا زي ما هي
 // عشان أي طلبات موجودة بالفعل في قاعدة البيانات بالحالات دي تفضل تتعرض صح. الحالات الجديدة
