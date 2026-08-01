@@ -1,6 +1,7 @@
 // ===== orders.js — Professional Order Engine: State Machine, Dispatch Engine, Checkout, Tracking =====
 
 import { addDoc, collection, db, doc, runTransaction, serverTimestamp, updateDoc, query, where } from './firebase.js';
+import { getPricingConfig, calculateFare } from './pricing.js';
 import { NEW_STEPS, NEW_STEP_ICONS, NEW_STEP_LABELS, SL, esc, normalizeStatus, onListenersCleared, onSnapshot, showScreen, showToast } from './utils.js';
 import { custNav, updateCartUI } from './customer.js';
 import { createNotification } from './notifications.js';
@@ -192,7 +193,7 @@ export async function merchantRespond(orderId, accept, actor) {
 // لو نجح تحديدهم من الإحداثيات). لو فشل تحديد العنوان النصي، برضه بيتحفظ الموقع الجغرافي
 // (مطلوب صراحة). عشان نضمن "العميل يختار موقعه" فعليًا (مش يبعت طلب من غير أي موقع)، بقى
 // إتمام الطلب يشترط إن getLocation() يكون اتضغط قبل كده في نفس الجلسة (window.userLat/Lng).
-async function reverseGeocode(lat, lng) {
+export async function reverseGeocode(lat, lng) {
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&accept-language=ar`);
     if (!res.ok) throw new Error('geocode-failed');
@@ -219,7 +220,18 @@ export async function goCheckout() {
   try {
     const total = window.cart.reduce((a, c) => a + c.price * c.qty, 0);
     const comm = Math.round(total * window.commRate / 100);
-    const fee = Math.round(total * 0.15);
+    let pricingSnapshot;
+    try {
+      const pricingCfg = await getPricingConfig();
+      pricingSnapshot = calculateFare(pricingCfg, 'delivery', {});
+    } catch (e) {
+      // إعدادات التسعير لسه مش متحطة (settings/pricing) - نفشل بوضوح وأمان بدل ما نرجع
+      // لرقم Hardcoded أو نكسر الشاشة برسالة خطأ غير مفهومة.
+      showToast('خدمة الطلبات غير متاحة مؤقتًا، حاول لاحقًا', 'err');
+      console.error('[goCheckout] pricing config missing:', e);
+      return;
+    }
+    const fee = pricingSnapshot.finalFare;
     const firstItem = window.cart[0];
     const orderStoreId = firstItem?.merchantId || null;
     const orderStoreName = firstItem?.storeName || 'متجر';
@@ -239,6 +251,7 @@ export async function goCheckout() {
       storeId: orderStoreId, storeName: orderStoreName,
       items: window.cart.map(c => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
       total, commission: comm, driverFee: fee,
+      pricingSnapshot,
       status: ORDER_STATUS.WAITING_MERCHANT, driverId: null, driverName: null,
       pickupLocation,
       // للتوافق مع الكود القديم اللي بيقرأ customerLat/Lng مباشرة (خرائط التتبع مثلاً)
