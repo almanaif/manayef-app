@@ -192,7 +192,7 @@ export function routeUser() {
   listenSettings();
   if (role === 'admin') { showScreen('screen-admin'); loadAdminData(); }
   else if (role === 'driver') {
-    if (window.CUD?.status === 'pending') showScreen('screen-driver-register');
+    if (window.CUD?.status === 'pending' || window.CUD?.status === 'rejected') showScreen('screen-driver-register');
     else { showScreen('screen-driver'); loadDriverData(); startGPS(); }
   }
   else if (role === 'merchant') { showScreen('screen-merchant'); loadMerchantData(); }
