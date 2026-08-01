@@ -178,6 +178,7 @@
       <div class="off-scroll" id="off-scroll"></div>
     </div>
     <button class="anyreq-btn" onclick="openAnyReq()"><div class="ar-ic">📋</div><div class="ar-info"><h3>لديك طلب؟ اطلبه</h3><p>أخبرنا بأي منتج محتاجه وهنجيبهولك</p></div></button>
+    <button class="anyreq-btn" onclick="openRideRequest()"><div class="ar-ic">🛵</div><div class="ar-info"><h3>اطلب مشوار</h3><p>حدد نقطة الانطلاق والوصول واعرف السعر فورًا</p></div></button>
     <div class="stores-sec">
       <div class="sec-hdr"><span class="sec-title">المتاجر</span></div>
       <div id="stores-list"></div>
@@ -268,6 +269,34 @@
   <div style="padding:14px"><button class="btn-p" onclick="showScreen('screen-customer')" style="background:var(--s)">رجوع للرئيسية</button></div>
 </div>
 
+<!-- ===== RIDE REQUEST (Phase 3A) ===== -->
+<div id="screen-ride-request" class="screen">
+  <div class="track-hero" style="display:flex;align-items:center;gap:12px">
+    <button onclick="showScreen('screen-customer')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0">→</button>
+    <div><h2>اطلب مشوار</h2><p id="rr-step-label">اضغط على الخريطة لتحديد نقطة الانطلاق</p></div>
+  </div>
+  <div class="map-wrap"><div id="ride-request-map"></div></div>
+  <div class="map-card" id="rr-price-card" style="display:none">
+    <h3>تفاصيل المشوار</h3>
+    <div class="map-info-row"><span class="lbl">المسافة</span><span class="val" id="rr-distance-val">--</span></div>
+    <div class="map-info-row"><span class="lbl">السعر التقديري</span><span class="val" id="rr-price-val">--</span></div>
+  </div>
+  <div style="padding:0 14px">
+    <div class="inp-g"><label>نوع المركبة</label>
+      <select id="rr-vehicle" class="sel" onchange="selectRideVehicle(this.value)">
+        <option value="">اختر...</option>
+        <option value="motorcycle">موتوسيكل</option>
+        <option value="tuktuk">توك توك</option>
+        <option value="car">عربية</option>
+      </select>
+    </div>
+  </div>
+  <div style="padding:14px;display:flex;gap:10px">
+    <button class="btn-p" onclick="resetRideRequest()" style="background:var(--s);flex:1">إعادة تحديد</button>
+    <button class="btn-p" id="rr-confirm-btn" onclick="createRideRequest()" disabled style="flex:2">تأكيد الطلب</button>
+  </div>
+</div>
+
 <!-- ===== DRIVER REGISTER ===== -->
 <div id="screen-driver-register" class="screen">
   <div class="dreg-hdr">
@@ -293,7 +322,7 @@
         </div>
       </div>
       <div class="dreg-sec"><h3>بيانات المركبة</h3>
-        <div class="inp-g"><label>نوع المركبة</label><select id="d-vtype" class="sel" onchange="dregSaveDraft()"><option value="">اختر...</option><option value="motorcycle">موتوسيكل</option><option value="tuktuk">توك توك</option><option value="bicycle">عجلة</option><option value="car">عربية</option></select><div class="field-err" id="err-d-vtype"></div></div>
+        <div class="inp-g"><label>نوع المركبة</label><select id="d-vtype" class="sel" onchange="dregSaveDraft()"><option value="">اختر...</option><option value="motorcycle">موتوسيكل</option><option value="tuktuk">توك توك</option><option value="bicycle">عجلة</option><option value="car">عربية</option><option value="tricycle">تروسيكل</option></select><div class="field-err" id="err-d-vtype"></div></div>
         <div class="inp-g"><label>موديل المركبة</label><input type="text" id="d-vmodel" class="inp" placeholder="مثال: 2020" oninput="dregSaveDraft()"></div>
         <div class="inp-g"><label>لون المركبة</label><input type="text" id="d-vcolor" class="inp" placeholder="مثال: أسود" oninput="dregSaveDraft()"></div>
         <div class="inp-g"><label>رقم اللوحة</label><input type="text" id="d-plate" class="inp" placeholder="أ ب ج 1234" oninput="dregSaveDraft()"></div>
@@ -378,7 +407,10 @@
         <div class="drv-hdr-av" id="drv-hdr-av">👤</div>
         <div style="min-width:0"><h2 id="drv-name">أهلاً 👋</h2><div class="drv-hdr-meta"><p style="margin:0">ابدأ يومك</p><span class="drv-hdr-rating">⭐ <span id="drv-hdr-rating-num">5.0</span></span></div></div>
       </div>
-      <div class="online-tog" onclick="toggleOnline(this)"><div class="tog-dot on" id="tog-dot"></div><span id="tog-lbl" style="font-size:12px;font-weight:700;color:#fff">متاح</span></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="icon-btn" onclick="openNotifs()" style="color:#fff;background:rgba(255,255,255,.1)">🔔<span class="badge" id="drv-notif-c">0</span></button>
+        <div class="online-tog" onclick="toggleOnline(this)"><div class="tog-dot on" id="tog-dot"></div><span id="tog-lbl" style="font-size:12px;font-weight:700;color:#fff">متاح</span></div>
+      </div>
     </div>
     <div class="drv-stats">
       <div class="drv-stat"><span class="sv" id="drv-t-ords">0</span><span class="sl">طلبات اليوم</span></div>
@@ -411,6 +443,9 @@
           <h3 id="drv-prof-name">--</h3>
           <p id="drv-prof-sub">مندوب توصيل</p>
           <div class="acc-line" id="drv-prof-phone-line" style="display:none;opacity:.85;font-size:11px;margin-top:3px">📞 <span id="drv-prof-phone"></span></div>
+          <div class="acc-line" id="drv-prof-vehicle-line" style="display:none;opacity:.85;font-size:11px;margin-top:3px">🏍️ <span id="drv-prof-vehicle"></span></div>
+          <div class="acc-line" id="drv-prof-plate-line" style="display:none;opacity:.85;font-size:11px;margin-top:3px">🔖 <span id="drv-prof-plate"></span></div>
+          <div class="acc-line" id="drv-prof-joined-line" style="display:none;opacity:.7;font-size:10px;margin-top:3px">📅 عضو منذ <span id="drv-prof-joined"></span></div>
           <span class="acc-status-badge" id="drv-prof-status" style="background:rgba(0,200,150,.2);color:#00E5B0">✅ نشط</span>
         </div>
       </div>
@@ -534,6 +569,19 @@
         <div class="comm-item"><span class="cv" id="adm-comm-r">10%</span><span class="cl">نسبة العمولة الحالية</span></div>
       </div><div class="comm-edit"><label>نسبة العمولة:</label><input type="number" id="comm-val" class="comm-inp" value="10"><button class="comm-save" onclick="saveComm()">حفظ</button></div></div>
       <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--r2);text-align:center"><strong id="adm-avg-ord">0 ج</strong><small style="color:var(--mu);display:block;margin-top:3px">متوسط قيمة الطلب</small></div>
+    </div>
+
+    <!-- جديد (Ride Service Integration Plan - الخطوة 2/3): إعدادات تسعير التوصيل الأساسية.
+         نموذج مؤقت بسيط لإتاحة الخدمة فورًا - صفحة "Pricing Settings" الكاملة (توصيل + مشاوير) هتُبنى في خطوة لاحقة من نفس الخطة. -->
+    <div class="adm-card">
+      <h3>💵 تسعير التوصيل (Delivery Pricing)</h3>
+      <p style="font-size:11px;color:var(--mu);margin-bottom:10px">كل الأسعار دي بتتطبق فورًا على أي طلب جديد، بدون أي نشر جديد للتطبيق. الطلبات القديمة مش بتتأثر.</p>
+      <div class="inp-g"><label>السعر الأساسي (جنيه)</label><input type="number" id="pr-del-base" class="inp" placeholder="مثال: 15"></div>
+      <div class="inp-g"><label>سعر الكيلومتر (جنيه) - اتركه صفر لو مش مستخدم حاليًا</label><input type="number" id="pr-del-perkm" class="inp" placeholder="0"></div>
+      <div class="inp-g"><label>الحد الأدنى لسعر التوصيل (جنيه)</label><input type="number" id="pr-del-min" class="inp" placeholder="مثال: 15"></div>
+      <div class="inp-g"><label>رسوم ثابتة إضافية (اختياري)</label><input type="number" id="pr-del-fee" class="inp" placeholder="0"></div>
+      <div style="font-size:11px;color:var(--mu);margin-bottom:8px">الإصدار الحالي: <span id="pr-version">--</span></div>
+      <button class="btn-ok" onclick="savePricingSettings()" style="width:100%">حفظ إعدادات التسعير</button>
     </div>
   </div>
 
