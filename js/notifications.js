@@ -34,7 +34,7 @@ function renderNotifList(docs) {
     }).join('');
   }
   const unreadCount = docs.filter(d => d.data().read !== true).length;
-  ['notif-c', 'adm-notif-c'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = unreadCount; });
+  ['notif-c', 'adm-notif-c', 'drv-notif-c'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = unreadCount; });
 }
 
 // ===== الاستماع اللحظي (onSnapshot) — بيشتغل لأي دور (عميل/تاجر/مندوب/أدمن) بمجرد تسجيل الدخول =====
