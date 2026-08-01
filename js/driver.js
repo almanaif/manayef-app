@@ -1,6 +1,6 @@
 // ===== driver.js — شاشات المندوب: GPS، الطلبات، معالج تسجيل مندوب جديد =====
 
-import { collection, db, doc, limit, orderBy, query, runTransaction, serverTimestamp, updateDoc, where } from './firebase.js';
+import { average, collection, count, db, doc, getAggregateFromServer, limit, orderBy, query, runTransaction, serverTimestamp, updateDoc, where } from './firebase.js';
 import { SC, SL, esc, escJs, normalizeStatus, onListenersCleared, onSnapshot, secureCloudinaryUpload, setLoad, showScreen, showToast } from './utils.js';
 import { getNextRequestId } from './merchant.js';
 import { ORDER_STATUS, acceptOrderAsDriver, getDispatchQuery, transitionOrder } from './orders.js';
@@ -48,8 +48,8 @@ export function startGPS() {
 export function loadDriverData() {
   const ud = window.CUD;
   if (ud) {
-    document.getElementById('drv-name').textContent = `أهلاً، ${ud.name||''} 👋`;
-    document.getElementById('drv-prof-name').textContent = ud.name||'--';
+    document.getElementById('drv-name').textContent = `أهلاً، ${ud.fullName||ud.name||''} 👋`;
+    document.getElementById('drv-prof-name').textContent = ud.fullName||ud.name||'--';
     document.getElementById('drv-prof-sub').textContent = ud.email||'--';
     if (ud.photoURL) {
       const av = document.getElementById('drv-av');
@@ -57,15 +57,16 @@ export function loadDriverData() {
       const hdrAv = document.getElementById('drv-hdr-av');
       if (hdrAv) hdrAv.innerHTML = `<img src="${esc(ud.photoURL)}" alt="">`;
     }
-    const rn = document.getElementById('drv-rating-num');
-    if (rn) rn.textContent = (ud.rating!=null ? ud.rating : 5.0).toFixed(1);
-    const hdrRn = document.getElementById('drv-hdr-rating-num');
-    if (hdrRn) hdrRn.textContent = (ud.rating!=null ? ud.rating : 5.0).toFixed(1);
-    const ratingVal = (ud.rating!=null ? ud.rating : 5.0).toFixed(1);
-    const profRatingSub = document.getElementById('drv-prof-rating-sub');
-    if (profRatingSub) profRatingSub.textContent = `${ratingVal} من 5`;
+    loadDriverRating(ud);
     const phoneLine = document.getElementById('drv-prof-phone-line');
     if (phoneLine) { if (ud.phone) { document.getElementById('drv-prof-phone').textContent = ud.phone; phoneLine.style.display = 'flex'; } else phoneLine.style.display = 'none'; }
+    const VEHICLE_LABELS = { motorcycle:'موتوسيكل', tuktuk:'توك توك', bicycle:'عجلة', car:'عربية', tricycle:'تروسيكل' };
+    const vehLine = document.getElementById('drv-prof-vehicle-line');
+    if (vehLine) { if (ud.vehicleType && VEHICLE_LABELS[ud.vehicleType]) { document.getElementById('drv-prof-vehicle').textContent = VEHICLE_LABELS[ud.vehicleType] + (ud.vehicleColor ? ` (${ud.vehicleColor})` : ''); vehLine.style.display = 'flex'; } else vehLine.style.display = 'none'; }
+    const plateLine = document.getElementById('drv-prof-plate-line');
+    if (plateLine) { if (ud.plateNumber) { document.getElementById('drv-prof-plate').textContent = ud.plateNumber; plateLine.style.display = 'flex'; } else plateLine.style.display = 'none'; }
+    const joinedLine = document.getElementById('drv-prof-joined-line');
+    if (joinedLine) { if (ud.createdAt?.toDate) { document.getElementById('drv-prof-joined').textContent = ud.createdAt.toDate().toLocaleDateString('ar-EG', { year:'numeric', month:'long' }); joinedLine.style.display = 'flex'; } else joinedLine.style.display = 'none'; }
     const statusBadge = document.getElementById('drv-prof-status');
     if (statusBadge) {
       const map = { active: ['✅ نشط','rgba(0,200,150,.2)','#00E5B0'], pending: ['⏳ قيد المراجعة','rgba(255,215,0,.2)','#FFD700'], rejected: ['❌ مرفوض','rgba(239,68,68,.2)','#EF4444'] };
@@ -76,6 +77,38 @@ export function loadDriverData() {
   loadDriverOrders();
   buildChart();
   listenNewOrders();
+}
+
+// جديد (Final Engineering Review - المهمة 2): التقييم كان دايمًا 5.0 ثابت (Placeholder) حتى
+// لو مفيش ولا تقييم حقيقي واحد من عملاء. دلوقتي بيتحسب فعليًا من ratings collection (نفس
+// الآلية المستخدمة بالفعل لتقييم المتاجر في admin.js) - قراءة مرة واحدة عند فتح الشاشة، مش
+// Listener دائم، لأن التقييم مش بيتغيّر لحظيًا زي الطلبات.
+async function loadDriverRating(ud) {
+  const rn = document.getElementById('drv-rating-num');
+  const hdrRn = document.getElementById('drv-hdr-rating-num');
+  const profRatingSub = document.getElementById('drv-prof-rating-sub');
+  if (!window.CU) return;
+  try {
+    const rAgg = await getAggregateFromServer(
+      query(collection(db,'ratings'), where('targetId','==',window.CU.uid), where('targetType','==','driver')),
+      { count: count(), avg: average('stars') }
+    );
+    const c = rAgg.data().count;
+    if (c > 0) {
+      const val = (rAgg.data().avg || 0).toFixed(1);
+      if (rn) rn.textContent = val;
+      if (hdrRn) hdrRn.textContent = val;
+      if (profRatingSub) profRatingSub.textContent = `${val} من 5 (${c} تقييم)`;
+    } else {
+      if (rn) rn.textContent = '🆕';
+      if (hdrRn) hdrRn.textContent = '🆕';
+      if (profRatingSub) profRatingSub.textContent = 'لسه معندكش تقييمات';
+    }
+  } catch (e) {
+    if (rn) rn.textContent = '--';
+    if (hdrRn) hdrRn.textContent = '--';
+    if (profRatingSub) profRatingSub.textContent = 'تعذّر تحميل التقييم';
+  }
 }
 
 export let newOrdersUnsub = null;
@@ -152,7 +185,7 @@ export function loadDriverOrders() {
 export async function acceptOrd() {
   if (!window._pendingOrdId || !window.CU) return;
   try {
-    await acceptOrderAsDriver(window._pendingOrdId, window.CU.uid, window.CUD?.name || '', window.CUD?.phone || '');
+    await acceptOrderAsDriver(window._pendingOrdId, window.CU.uid, window.CUD?.fullName || window.CUD?.name || '', window.CUD?.phone || '');
     document.getElementById('new-ord-banner').style.display='none';
     showToast('✅ تم قبول الطلب! توجه للمتجر','ok');
   } catch(e) {
@@ -166,7 +199,7 @@ export async function acceptOrd() {
 // كل استدعاء بيتحقق من الـ State Machine في orders.js قبل ما ينفذ (transitionOrder).
 export async function updOrdStatus(id, status) {
   try {
-    const actor = { type: 'driver', uid: window.CU?.uid, name: window.CUD?.name };
+    const actor = { type: 'driver', uid: window.CU?.uid, name: window.CUD?.fullName || window.CUD?.name };
     await transitionOrder(id, status, actor);
     // جديد: لما المندوب يخلّص الطلب (delivered)، نفضّي activeOrderId عشان يقدر ياخد طلب جديد
     if (status === ORDER_STATUS.DELIVERED && window.CU) {
@@ -319,7 +352,7 @@ export function dregUpdateProgress(){
   if(el) el.textContent=`اكتمال التسجيل: ${pct}%`;
 }
 export function dregRenderReview(){
-  const vtypeLabels={motorcycle:'موتوسيكل',tuktuk:'توك توك',bicycle:'عجلة',car:'عربية'};
+  const vtypeLabels={motorcycle:'موتوسيكل',tuktuk:'توك توك',bicycle:'عجلة',car:'عربية',tricycle:'تروسيكل'};
   const rows=[
     ['الاسم', document.getElementById('d-name').value],
     ['الهاتف', document.getElementById('d-phone').value],
