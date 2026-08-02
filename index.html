@@ -279,6 +279,7 @@
   <div class="map-card" id="rr-price-card" style="display:none">
     <h3>تفاصيل المشوار</h3>
     <div class="map-info-row"><span class="lbl">المسافة</span><span class="val" id="rr-distance-val">--</span></div>
+    <div class="map-info-row"><span class="lbl">الوقت المتوقع</span><span class="val" id="rr-eta-val">--</span></div>
     <div class="map-info-row"><span class="lbl">السعر التقديري</span><span class="val" id="rr-price-val">--</span></div>
   </div>
   <div style="padding:0 14px">
@@ -294,6 +295,17 @@
   <div style="padding:14px;display:flex;gap:10px">
     <button class="btn-p" onclick="resetRideRequest()" style="background:var(--s);flex:1">إعادة تحديد</button>
     <button class="btn-p" id="rr-confirm-btn" onclick="createRideRequest()" disabled style="flex:2">تأكيد الطلب</button>
+  </div>
+</div>
+
+<!-- ===== RIDE STATUS (Phase 3B - Recovery فقط، مفيش خريطة/تتبع حي) ===== -->
+<div id="screen-ride-status" class="screen">
+  <div class="track-hero" style="display:flex;align-items:center;gap:12px">
+    <button onclick="showScreen('screen-customer')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0">→</button>
+    <div><h2>حالة المشوار</h2><p id="rs-status-label">جاري البحث عن سائق...</p></div>
+  </div>
+  <div style="padding:14px">
+    <button class="btn-p" id="rs-retry-btn" onclick="retryDispatch()" style="display:none">إعادة محاولة البحث عن سائق</button>
   </div>
 </div>
 
@@ -422,6 +434,7 @@
 
   <div id="drv-home-tab">
     <div class="notif-banner" id="new-ord-banner" style="display:none"><div class="nb-ic">📦</div><div class="nb-info"><h4>طلب جديد!</h4><p id="new-ord-txt">طلب جديد بانتظارك</p></div><button class="nb-btn" onclick="acceptOrd()">قبول</button></div>
+    <div class="notif-banner" id="ride-offer-banner" style="display:none"><div class="nb-ic">🛵</div><div class="nb-info"><h4>عرض مشوار!</h4><p id="ride-offer-txt">مشوار جديد بانتظارك</p></div><div style="display:flex;gap:6px"><button class="nb-btn" onclick="acceptRideOffer()">قبول</button><button class="nb-btn" style="background:var(--s)" onclick="rejectRideOffer()">رفض</button></div></div>
     <div class="drv-extra" id="drv-extra"><div class="de"><span class="di">📦</span><span class="dv" id="drv-total-ords">0</span><span class="dl">إجمالي الطلبات</span></div><div class="de"><span class="di">💰</span><span class="dv" id="drv-month-earn">0 ج</span><span class="dl">أرباح الشهر</span></div></div>
     <div class="drv-ords"><div class="sec-hdr" style="padding:0 14px 10px"><span class="sec-title">الطلبات الحالية</span></div><div id="drv-ords-list"></div></div>
     <div class="drv-map-wrap" id="drv-map-sec" style="display:none"><div id="driver-map"></div></div>
