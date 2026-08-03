@@ -350,7 +350,7 @@ export function admRejDrv(uid){
     }catch(e){showToast('حدث خطأ','err');}
   });
 }
-export async function admAccStore(id){try{await updateDoc(doc(db,'users',id),{status:'active',approvedAt:serverTimestamp()});await updateDoc(doc(db,'stores',id),{status:'active'}).catch(()=>{});await addDoc(collection(db,'notifications'),{userId:id,title:'🎉 تم قبول متجرك',body:'تم اعتماد متجرك على منصة Manayef GO، تقدر تضيف منتجاتك وتستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});logAudit('قبول متجر');showToast('✅ تم قبول المتجر','ok');}catch(e){showToast('حدث خطأ','err');}}
+export async function admAccStore(id){try{await updateDoc(doc(db,'users',id),{status:'active',approvedAt:serverTimestamp()});await updateDoc(doc(db,'stores',id),{status:'active'}).catch(()=>{});await addDoc(collection(db,'notifications'),{userId:id,title:'🎉 تم قبول متجرك',body:'تم اعتماد متجرك على منصة MOVA، تقدر تضيف منتجاتك وتستقبل الطلبات الآن.',type:'or',read:false,createdAt:serverTimestamp()});logAudit('قبول متجر');showToast('✅ تم قبول المتجر','ok');}catch(e){showToast('حدث خطأ','err');}}
 export function admRejStore(id){
   openReasonModal('سبب رفض المتجر', ['المستندات غير واضحة','بيانات المتجر غير مكتملة','نشاط غير مسموح به'], async(reason)=>{
     try{

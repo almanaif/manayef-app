@@ -65,7 +65,7 @@ Object.assign(window, {
 // كان بيوقف تنفيذ باقي الملف بالكامل — بما فيه مستمع onAuthStateChanged اللي بيقفل شاشة
 // التحميل. لف الكود ده في try/catch يضمن إن فشل جزء PWA (ثانوي) مايوقفش تحميل التطبيق كله.
 try {
-  const mf={name:'منايف GO',short_name:'منايف GO',start_url:'/',display:'standalone',background_color:'#1A1A2E',theme_color:'#FF6B00',description:'توصيل سريع في المنايف',icons:[{src:'https://via.placeholder.com/192x192/FF6B00/FFFFFF?text=GO',sizes:'192x192',type:'image/png'},{src:'https://via.placeholder.com/512x512/FF6B00/FFFFFF?text=GO',sizes:'512x512',type:'image/png'}]};
+  const mf={name:'MOVA',short_name:'MOVA',start_url:'/',display:'standalone',background_color:'#1A1A2E',theme_color:'#FF6B00',description:'توصيل سريع في المنايف',icons:[{src:'https://via.placeholder.com/192x192/FF6B00/FFFFFF?text=GO',sizes:'192x192',type:'image/png'},{src:'https://via.placeholder.com/512x512/FF6B00/FFFFFF?text=GO',sizes:'512x512',type:'image/png'}]};
   const mb=new Blob([JSON.stringify(mf)],{type:'application/json'});
   const manifestLink = document.getElementById('manifest-link');
   if(manifestLink) manifestLink.setAttribute('href',URL.createObjectURL(mb));
