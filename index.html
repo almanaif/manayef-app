@@ -7,8 +7,10 @@
   <link rel="stylesheet" href="css/styles.css">
   <link rel="manifest" id="manifest-link">
   <meta name="theme-color" content="#FF6B00">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <!-- Phase 4B: Leaflet اتشال بالكامل من المشروع - استبدلناه بـ MapLibre GL JS + OpenFreeMap
+       Vector Tiles (راجع js/maps.js). نفس أسلوب التحميل القديم (defer) اتحافظ عليه. -->
+  <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js" defer></script>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
 </head>
 <body>
 
@@ -298,11 +300,16 @@
   </div>
 </div>
 
-<!-- ===== RIDE STATUS (Phase 3B - Recovery فقط، مفيش خريطة/تتبع حي) ===== -->
+<!-- ===== RIDE STATUS (Phase 3B: Recovery + Phase 4B: خريطة حية + Route + ETA) ===== -->
 <div id="screen-ride-status" class="screen">
   <div class="track-hero" style="display:flex;align-items:center;gap:12px">
     <button onclick="showScreen('screen-customer')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0">→</button>
     <div><h2>حالة المشوار</h2><p id="rs-status-label">جاري البحث عن سائق...</p></div>
+  </div>
+  <div class="map-wrap" id="rs-map-wrap" style="display:none"><div id="ride-status-map"></div></div>
+  <div class="map-card" id="rs-info-card" style="display:none">
+    <div class="map-info-row"><span class="lbl">مدة الرحلة المتوقعة</span><span class="val" id="rs-trip-eta-val">--</span></div>
+    <div class="map-info-row" id="rs-pickup-eta-row" style="display:none"><span class="lbl">وقت وصول المندوب</span><span class="val" id="rs-pickup-eta-val">--</span></div>
   </div>
   <div style="padding:14px">
     <button class="btn-p" id="rs-retry-btn" onclick="retryDispatch()" style="display:none">إعادة محاولة البحث عن سائق</button>
@@ -435,6 +442,16 @@
   <div id="drv-home-tab">
     <div class="notif-banner" id="new-ord-banner" style="display:none"><div class="nb-ic">📦</div><div class="nb-info"><h4>طلب جديد!</h4><p id="new-ord-txt">طلب جديد بانتظارك</p></div><button class="nb-btn" onclick="acceptOrd()">قبول</button></div>
     <div class="notif-banner" id="ride-offer-banner" style="display:none"><div class="nb-ic">🛵</div><div class="nb-info"><h4>عرض مشوار!</h4><p id="ride-offer-txt">مشوار جديد بانتظارك</p></div><div style="display:flex;gap:6px"><button class="nb-btn" onclick="acceptRideOffer()">قبول</button><button class="nb-btn" style="background:var(--s)" onclick="rejectRideOffer()">رفض</button></div></div>
+    <!-- ===== Driver Active Ride Panel (Phase 4B) - بانل بسيط، مش Dashboard ===== -->
+    <div class="map-card dar-panel" id="dar-panel" style="display:none">
+      <h3>🛵 مشوار جارٍ</h3>
+      <p id="dar-status-label" class="dar-status">--</p>
+      <div class="map-info-row"><span class="lbl">من</span><span class="val" id="dar-pickup-val">--</span></div>
+      <div class="map-info-row"><span class="lbl">إلى</span><span class="val" id="dar-dropoff-val">--</span></div>
+      <div class="map-info-row"><span class="lbl">مدة الرحلة المتوقعة</span><span class="val" id="dar-trip-eta-val">--</span></div>
+      <div class="map-info-row" id="dar-pickup-eta-row" style="display:none"><span class="lbl">وقت الوصول للعميل</span><span class="val" id="dar-pickup-eta-val">--</span></div>
+      <button class="btn-p" id="dar-action-btn" style="margin-top:10px;width:100%" onclick="handleDriverRideAction()">--</button>
+    </div>
     <div class="drv-extra" id="drv-extra"><div class="de"><span class="di">📦</span><span class="dv" id="drv-total-ords">0</span><span class="dl">إجمالي الطلبات</span></div><div class="de"><span class="di">💰</span><span class="dv" id="drv-month-earn">0 ج</span><span class="dl">أرباح الشهر</span></div></div>
     <div class="drv-ords"><div class="sec-hdr" style="padding:0 14px 10px"><span class="sec-title">الطلبات الحالية</span></div><div id="drv-ords-list"></div></div>
     <div class="drv-map-wrap" id="drv-map-sec" style="display:none"><div id="driver-map"></div></div>
@@ -625,7 +642,9 @@
   <!-- Map -->
   <div id="adm-map" class="adm-content" style="display:none">
     <div class="adm-map-wrap"><div id="admin-map"></div></div>
-    <div class="adm-card"><h3>المناديب على الخريطة</h3><div class="map-legend"><div class="ml-item">🛵 مندوب نشط</div><div class="ml-item">🏪 متجر</div></div></div>
+    <div class="adm-card"><h3>المناديب على الخريطة</h3><div class="map-legend"><div class="ml-item">🛵 مندوب نشط</div><div class="ml-item">🏪 متجر</div><div class="ml-item">🟢 نقطة انطلاق</div><div class="ml-item">🔴 نقطة وصول</div></div></div>
+    <!-- Phase 4B: المشاوير الجارية حاليًا + ETA لكل واحد (نفس الحقول المخزنة، بدون Routing جديد) -->
+    <div class="adm-card"><h3>المشاوير الجارية</h3><div id="adm-active-rides-list"><div class="empty-state" style="padding:14px"><p style="font-size:12px">لا توجد مشاوير جارية حاليًا</p></div></div></div>
   </div>
 
   <!-- Audit Log -->
