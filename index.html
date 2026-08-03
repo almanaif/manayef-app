@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <title>منايف GO</title>
+  <title>MOVA</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="manifest" id="manifest-link">
   <meta name="theme-color" content="#FF6B00">
@@ -17,7 +17,7 @@
 <!-- ===== LOADING ===== -->
 <div id="loading">
   <div class="ld-ic">🛵</div>
-  <div class="ld-name">منايف <span>GO</span></div>
+  <div class="ld-name">MO<span>VA</span></div>
   <div class="ld-bar"><div class="ld-fill"></div></div>
   <div class="ld-sub" id="ld-sub">جاري التحميل...</div>
 </div>
@@ -53,7 +53,7 @@
 <div id="screen-entry" class="screen active">
   <div class="auth-logo" style="margin-bottom:36px">
     <div class="auth-logo-ic">🛵</div>
-    <h1>منايف <span>GO</span></h1>
+    <h1>MO<span>VA</span></h1>
     <p>توصيل سريع في المنايف</p>
   </div>
   <div class="role-card">
@@ -77,7 +77,7 @@
 <div id="screen-auth" class="screen">
   <div class="auth-logo">
     <div class="auth-logo-ic" id="entry-type-icon">🛵</div>
-    <h1>منايف <span>GO</span></h1>
+    <h1>MO<span>VA</span></h1>
     <p id="entry-type-label">حساب جديد</p>
   </div>
   <div class="auth-card">
@@ -138,7 +138,7 @@
     <div class="otp-ic">📧</div>
     <h2>تحقق من بريدك</h2>
     <p>تم إرسال رابط تحقق على <strong id="otp-email"></strong><br>افتح البريد واضغط على الرابط</p>
-    <p style="font-size:12px;color:var(--p);margin-top:8px">💡 افتح البريد واضغط على "دخول إلى المنايف GO"</p>
+    <p style="font-size:12px;color:var(--p);margin-top:8px">💡 افتح البريد واضغط على "دخول إلى MOVA"</p>
     <button class="btn-p" onclick="showScreen('screen-auth')" style="margin-top:14px">الرجوع</button>
   </div>
 </div>
@@ -515,7 +515,7 @@
 
 <!-- ===== ADMIN PANEL ===== -->
 <div id="screen-admin" class="screen">
-  <div class="adm-top"><div class="adm-logo">منايف <span>GO</span></div><div style="display:flex;gap:8px"><button class="icon-btn" onclick="openNotifs()" style="color:#fff;background:rgba(255,255,255,.1)">🔔<span class="badge" id="adm-notif-c">0</span></button><button class="icon-btn" onclick="admLogoutConfirm()" style="color:#fff;background:rgba(255,255,255,.1)" title="تسجيل الخروج">🚪</button></div></div>
+  <div class="adm-top"><div class="adm-logo">MO<span>VA</span></div><div style="display:flex;gap:8px"><button class="icon-btn" onclick="openNotifs()" style="color:#fff;background:rgba(255,255,255,.1)">🔔<span class="badge" id="adm-notif-c">0</span></button><button class="icon-btn" onclick="admLogoutConfirm()" style="color:#fff;background:rgba(255,255,255,.1)" title="تسجيل الخروج">🚪</button></div></div>
   <div class="adm-nav">
     <button class="adm-nb active" onclick="admNav('dashboard',this)">📊 لوحة</button>
     <button class="adm-nb" onclick="admNav('drivers',this)">🛵 مناديب</button>
@@ -715,7 +715,7 @@
 
 <!-- ===== JOIN MERCHANT SCREEN ===== -->
 <div id="screen-join-merchant" class="screen">
-  <div class="jm-hdr"><h1>انضم كتاجر</h1><p>أضف متجرك على منصة المنايف GO وابدأ تستقبل الطلبات</p></div>
+  <div class="jm-hdr"><h1>انضم كتاجر</h1><p>أضف متجرك على منصة MOVA وابدأ تستقبل الطلبات</p></div>
   <div class="jm-body">
     <div class="jm-sec"><h3>بيانات المتجر</h3><div class="inp-g"><label>اسم المتجر</label><input type="text" id="jm-name" class="inp" placeholder="سوبرماركت المنايف"></div><div class="inp-g"><label>رقم التليفون</label><input type="tel" id="jm-phone" class="inp" placeholder="01xxxxxxxxx"></div><div class="inp-g"><label>العنوان</label><input type="text" id="jm-addr" class="inp" placeholder="شارع الجمهورية"></div></div>
     <div class="jm-sec"><h3>تصنيف المتجر</h3><div class="cat-grid"><div class="cat-g-btn" onclick="selMCat(this)"><span class="ic">🛒</span>بقالة</div><div class="cat-g-btn" onclick="selMCat(this)"><span class="ic">🍽️</span>مطعم</div><div class="cat-g-btn" onclick="selMCat(this)"><span class="ic">💊</span>صيدلية</div></div></div>
