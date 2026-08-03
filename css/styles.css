@@ -265,6 +265,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);overf
 .map-wrap{margin:0 14px 10px;border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
 #tracking-map{height:220px;width:100%}
 #ride-request-map{height:320px;width:100%}
+#ride-status-map{height:220px;width:100%}
 .map-card{background:#fff;padding:14px;border-radius:var(--r);margin:0 14px 10px;box-shadow:var(--sh)}
 .map-card h3{font-size:14px;font-weight:800;margin-bottom:10px}
 .map-info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
@@ -501,6 +502,14 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);overf
 #admin-map{height:250px;width:100%}
 .map-legend{display:flex;gap:14px;margin-top:8px;font-size:11px;font-weight:700;flex-wrap:wrap}
 .ml-item{display:flex;align-items:center;gap:5px}
+.adm-ride-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px}
+.adm-ride-row:last-child{border-bottom:none}
+.adm-ride-row .arw-id{font-weight:800}
+.adm-ride-row .arw-meta{color:var(--mu);font-weight:600;text-align:left}
+
+/* Driver Active Ride Panel (Phase 4B) */
+.dar-panel{border:2px solid var(--p)}
+.dar-status{font-size:12px;font-weight:700;color:var(--p);margin-bottom:6px}
 
 /* MERCHANT */
 #screen-merchant{background:var(--bg);padding-bottom:75px}
