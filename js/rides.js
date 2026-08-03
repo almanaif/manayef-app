@@ -53,12 +53,14 @@ export function isWithinMaxDistance(distanceKm, pricingRideCfg) {
 // كل الكود من هنا لتحت هو أول تنفيذ حقيقي. لسه: صفر Dispatch، صفر Notification للمندوب،
 // صفر تغيير حالة بعد الإنشاء. الهدف الوحيد: العميل يحدد نقطتين، يشوف السعر، ويأكد.
 
-import { db, collection, addDoc, getDoc, getDocs, updateDoc, doc, query, where, onSnapshot, runTransaction, arrayUnion, serverTimestamp } from './firebase.js';
-import { showToast, showScreen, RIDE_ELIGIBLE_VEHICLES } from './utils.js';
+import { db, collection, addDoc, getDoc, getDocs, updateDoc, doc, query, where, runTransaction, arrayUnion, serverTimestamp } from './firebase.js';
+import { showToast, showScreen, RIDE_ELIGIBLE_VEHICLES, onListenersCleared, onSnapshot } from './utils.js';
 import { getPricingConfig, calculateFare } from './pricing.js';
 import { _distMeters } from './driver.js';
 import { reverseGeocode } from './orders.js';
 import { getRoute } from './routing.js';
+import { createEmojiMarker, initRideStatusMap, updateRideStatusDriverLocation, clearRideStatusMap,
+         setDriverMapRideMode, setDriverMapIdleMode, OPENFREEMAP_STYLE } from './maps.js';
 
 // أقصى عدد سائقين مرشحين لكل محاولة Dispatch - القيمة دي معمارية (جزء من التصميم المعتمد)
 // مش تسعير، فمكانها هنا صح مش في settings/pricing.
@@ -96,11 +98,10 @@ export function openRideRequest() {
   if (!window.CU) { showScreen('screen-entry'); return; }
   showScreen('screen-ride-request');
   rrReset();
-  if (typeof L === 'undefined') { showToast('تعذر تحميل الخريطة', 'err'); return; }
+  if (typeof maplibregl === 'undefined') { showToast('تعذر تحميل الخريطة', 'err'); return; }
   if (rrMap) { rrMap.remove(); rrMap = null; }
-  rrMap = L.map('ride-request-map', { zoomControl: false, attributionControl: false })
-    .setView(window.userLat && window.userLng ? [window.userLat, window.userLng] : [30.5965, 32.2715], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(rrMap);
+  const center = window.userLat && window.userLng ? [window.userLng, window.userLat] : [32.2715, 30.5965];
+  rrMap = new maplibregl.Map({ container: 'ride-request-map', style: OPENFREEMAP_STYLE, center, zoom: 15, attributionControl: false });
   rrMap.on('click', rrHandleMapClick);
 }
 
@@ -113,23 +114,21 @@ function rrUpdateStepLabel() {
 }
 
 function rrHandleMapClick(e) {
-  const { lat, lng } = e.latlng;
+  const { lat, lng } = e.lngLat;
   if (!rrPickup) {
     rrPickup = { lat, lng };
-    const icon = L.divIcon({ html: '<div style="font-size:26px;line-height:1">🟢</div>', className: '', iconSize: [30, 30] });
-    rrMarkerPickup = L.marker([lat, lng], { icon }).addTo(rrMap);
+    rrMarkerPickup = createEmojiMarker(rrMap, rrPickup, '🟢');
   } else if (!rrDropoff) {
     rrDropoff = { lat, lng };
-    const icon = L.divIcon({ html: '<div style="font-size:26px;line-height:1">🔴</div>', className: '', iconSize: [30, 30] });
-    rrMarkerDropoff = L.marker([lat, lng], { icon }).addTo(rrMap);
+    rrMarkerDropoff = createEmojiMarker(rrMap, rrDropoff, '🔴');
     rrComputePrice(); // النقطتين اتحددوا - نحسب المسافة والسعر فورًا
   }
   rrUpdateStepLabel();
 }
 
 export function resetRideRequest() {
-  if (rrMarkerPickup) { rrMap?.removeLayer(rrMarkerPickup); }
-  if (rrMarkerDropoff) { rrMap?.removeLayer(rrMarkerDropoff); }
+  if (rrMarkerPickup) { rrMarkerPickup.remove(); }
+  if (rrMarkerDropoff) { rrMarkerDropoff.remove(); }
   rrReset();
 }
 
@@ -376,6 +375,7 @@ export async function acceptRideOffer() {
     });
     showToast('تم قبول المشوار', 'ok');
     hideRideOfferBanner();
+    watchDriverActiveRide(rideId); // Phase 4B: يبدأ يتابع نفس المشوار فورًا (بانل + خريطة المندوب)
   } catch (e) {
     console.error('[acceptRideOffer] failed:', e);
     showToast('تعذر قبول المشوار (ربما اتاخد بالفعل)', 'err');
@@ -417,6 +417,136 @@ function hideRideOfferBanner() {
   if (b) b.style.display = 'none';
 }
 
+// =====================================================================================
+// ===== Phase 4B — Ride Lifecycle Continuation (driver_assigned -> driver_arrived ->
+// in_progress -> completed) =====
+// نفس فلسفة acceptRideOffer/rejectRideOffer تمامًا: Transaction إلزامية، تحقق من إن اللي
+// بينفذ هو المندوب المعيّن فعليًا على نفس المشوار وإن الحالة الحالية صح، وrideCoreUnchanged()
+// (في firestore.rules) بيمنع أي لمس لبيانات الطلب/السعر مهما كان. صفر حقول إضافية هنا -
+// بس status. تفريغ activeRideId بيتم بس عند completed (زي activeOrderId في orders.js تمامًا).
+// =====================================================================================
+async function transitionRideStep(fromStatus, toStatus, clearActiveRideId = false) {
+  if (!window.CU) return;
+  const rideId = activeRideId; // نفس المشوار اللي البانل بيتابعه حاليًا
+  if (!rideId) return;
+  const rideRef = doc(db, RIDES_COLLECTION, rideId);
+  const driverRef = doc(db, 'users', window.CU.uid);
+  try {
+    await runTransaction(db, async (t) => {
+      const rideSnap = await t.get(rideRef);
+      const ride = rideSnap.data();
+      if (!ride || ride.driverId !== window.CU.uid) throw new Error('not-your-ride');
+      if (!canTransitionRide(ride.status, toStatus) || ride.status !== fromStatus) throw new Error('invalid-transition');
+      t.update(rideRef, { status: toStatus });
+      if (clearActiveRideId) t.update(driverRef, { activeRideId: null });
+    });
+  } catch (e) {
+    console.error(`[transitionRideStep ${fromStatus}->${toStatus}] failed:`, e);
+    showToast('تعذر تنفيذ الخطوة، حاول مرة أخرى', 'err');
+  }
+}
+export function driverArrivedAtPickup() { return transitionRideStep(RIDE_STATUS.DRIVER_ASSIGNED, RIDE_STATUS.DRIVER_ARRIVED); }
+export function driverStartTrip() { return transitionRideStep(RIDE_STATUS.DRIVER_ARRIVED, RIDE_STATUS.IN_PROGRESS); }
+export function driverCompleteTrip() { return transitionRideStep(RIDE_STATUS.IN_PROGRESS, RIDE_STATUS.COMPLETED, true); }
+
+// زرار واحد بس في البانل، فعله بيتغيّر حسب الحالة الحالية (زي ما اتطلب صراحة - Active Ride
+// Panel بسيط، مش Dashboard، وأزرار الانتقالات المحددة بس)
+export async function handleDriverRideAction() {
+  const btn = document.getElementById('dar-action-btn');
+  if (btn) btn.disabled = true;
+  try {
+    if (activeRideStatus === RIDE_STATUS.DRIVER_ASSIGNED) await driverArrivedAtPickup();
+    else if (activeRideStatus === RIDE_STATUS.DRIVER_ARRIVED) await driverStartTrip();
+    else if (activeRideStatus === RIDE_STATUS.IN_PROGRESS) await driverCompleteTrip();
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ===== Live Driver Location (Phase 4B - البند المؤجل) =====
+// بتتنده من driver.js من جوه نفس نبضة GPS المتحكم فيها بالفعل (10 ثواني/30 متر) - صفر
+// كتابات إضافية، بس كتابة تانية (rides/{rideId}) بتتضاف لنفس النبضة، وبس لما يكون فيه مشوار
+// جاري في إحدى الحالات التلاتة دي (مش وقت Online بس، زي ما اتحدد صراحة).
+const LOCATION_UPDATE_STATUSES = [RIDE_STATUS.DRIVER_ASSIGNED, RIDE_STATUS.DRIVER_ARRIVED, RIDE_STATUS.IN_PROGRESS];
+export function updateDriverLocationForActiveRide(lat, lng) {
+  if (!activeRideId || !LOCATION_UPDATE_STATUSES.includes(activeRideStatus)) return;
+  updateDoc(doc(db, RIDES_COLLECTION, activeRideId), {
+    driverLocation: { lat, lng, updatedAt: serverTimestamp() },
+  }).catch(() => {});
+}
+
+// ===== Driver Active Ride Panel (Phase 4B) =====
+let activeRideId = null;
+let activeRideStatus = null;
+let darUnsub = null;
+const DAR_ACTION_LABELS = {
+  [RIDE_STATUS.DRIVER_ASSIGNED]: 'وصلت لنقطة الانطلاق',
+  [RIDE_STATUS.DRIVER_ARRIVED]: 'ابدأ الرحلة',
+  [RIDE_STATUS.IN_PROGRESS]: 'أنهِ الرحلة',
+};
+
+// بتتنده من driver.js عند فتح شاشة المندوب (تعالج حالة الرجوع للتطبيق ولسه فيه مشوار جاري)
+export function initDriverActiveRideListener() {
+  if (darUnsub || !window.CU) return;
+  const rideId = window.CUD?.activeRideId;
+  if (rideId) watchDriverActiveRide(rideId);
+}
+
+function watchDriverActiveRide(rideId) {
+  if (darUnsub) { darUnsub(); darUnsub = null; }
+  activeRideId = rideId;
+  darUnsub = onSnapshot(doc(db, RIDES_COLLECTION, rideId), snap => {
+    if (!snap.exists()) { stopDriverActiveRide(); return; }
+    const d = snap.data();
+    if (![RIDE_STATUS.DRIVER_ASSIGNED, RIDE_STATUS.DRIVER_ARRIVED, RIDE_STATUS.IN_PROGRESS].includes(d.status)) {
+      stopDriverActiveRide();
+      return;
+    }
+    activeRideStatus = d.status;
+    renderDriverActiveRidePanel(d);
+    setDriverMapRideMode(d);
+  });
+}
+
+function stopDriverActiveRide() {
+  if (darUnsub) { darUnsub(); darUnsub = null; }
+  activeRideId = null; activeRideStatus = null;
+  const panel = document.getElementById('dar-panel');
+  if (panel) panel.style.display = 'none';
+  setDriverMapIdleMode(); // Driver Map يرجع تلقائيًا للوضع الطبيعي (زي ما اتطلب صراحة)
+}
+
+function renderDriverActiveRidePanel(d) {
+  const panel = document.getElementById('dar-panel');
+  if (!panel) return;
+  panel.style.display = 'block';
+  const statusLbl = document.getElementById('dar-status-label');
+  if (statusLbl) statusLbl.textContent = RS_LABELS_FOR_DRIVER[d.status] || d.status;
+  const pickupEl = document.getElementById('dar-pickup-val');
+  if (pickupEl) pickupEl.textContent = d.pickup?.address || 'محدد على الخريطة';
+  const dropoffEl = document.getElementById('dar-dropoff-val');
+  if (dropoffEl) dropoffEl.textContent = d.dropoff?.address || 'محدد على الخريطة';
+  const tripEtaEl = document.getElementById('dar-trip-eta-val');
+  if (tripEtaEl) tripEtaEl.textContent = (typeof d.tripEtaMinutes === 'number') ? d.tripEtaMinutes + ' دقيقة' : '--';
+  const pickupEtaRow = document.getElementById('dar-pickup-eta-row');
+  const pickupEtaEl = document.getElementById('dar-pickup-eta-val');
+  if (pickupEtaRow && pickupEtaEl) {
+    if (typeof d.pickupEtaMinutes === 'number' && d.status === RIDE_STATUS.DRIVER_ASSIGNED) {
+      pickupEtaEl.textContent = d.pickupEtaMinutes + ' دقيقة';
+      pickupEtaRow.style.display = 'flex';
+    } else {
+      pickupEtaRow.style.display = 'none';
+    }
+  }
+  const btn = document.getElementById('dar-action-btn');
+  if (btn) btn.textContent = DAR_ACTION_LABELS[d.status] || '--';
+}
+const RS_LABELS_FOR_DRIVER = {
+  [RIDE_STATUS.DRIVER_ASSIGNED]: 'توجّه لنقطة الانطلاق',
+  [RIDE_STATUS.DRIVER_ARRIVED]: 'وصلت - في انتظار العميل',
+  [RIDE_STATUS.IN_PROGRESS]: 'الرحلة جارية 🛣️',
+};
+
 // ===== Driver Listener (المهمة 7) — السائق يشوف بس العروض الموجهة له بالاسم =====
 let driverOfferUnsub = null;
 export function listenRideOffers() {
@@ -449,6 +579,9 @@ const RS_LABELS = {
   [RIDE_STATUS.REQUESTED]: 'جاري البحث عن سائق...',
   [RIDE_STATUS.DRIVER_OFFERED]: 'تم إرسال العرض لأقرب السائقين، في انتظار الرد',
   [RIDE_STATUS.DRIVER_ASSIGNED]: 'تم تعيين مندوب لك ✅',
+  [RIDE_STATUS.DRIVER_ARRIVED]: 'المندوب وصل لنقطة الانطلاق 📍',
+  [RIDE_STATUS.IN_PROGRESS]: 'الرحلة جارية 🛣️',
+  [RIDE_STATUS.COMPLETED]: 'تم الوصول ✅',
   [RIDE_STATUS.CANCELLED]: 'تم إلغاء المشوار',
 };
 function rsSetLabel(text) {
@@ -459,21 +592,70 @@ function rsShowRetry(show) {
   const btn = document.getElementById('rs-retry-btn');
   if (btn) btn.style.display = show ? 'block' : 'none';
 }
+// Phase 4B: هل خريطة حالة المشوار اتبنت فعلاً لنفس المحاولة الحالية؟ (تُبنى مرة واحدة بس،
+// بعد كده كل Snapshot جديد بيحرّك نقطة المندوب بس - مش بيعيد بناء الخريطة كل تحديث)
+let rsMapInitialized = false;
+function rsSetMapVisible(show) {
+  const wrap = document.getElementById('rs-map-wrap');
+  if (wrap) wrap.style.display = show ? 'block' : 'none';
+}
+function rsSetInfoVisible(show) {
+  const card = document.getElementById('rs-info-card');
+  if (card) card.style.display = show ? 'block' : 'none';
+}
+// عرض Trip ETA دايمًا (موجودة من وقت إنشاء المشوار)، وPickup ETA بس وقت ما تكون محسوبة
+// ومعقولة (بعد تعيين مندوب، وقبل ما يوصل فعليًا) - نفس الحقلين المخزّنين زي ما هما بدون تغيير اسم.
+function rsUpdateEta(d) {
+  rsSetInfoVisible(true);
+  const tripEl = document.getElementById('rs-trip-eta-val');
+  if (tripEl) tripEl.textContent = (typeof d.tripEtaMinutes === 'number') ? d.tripEtaMinutes + ' دقيقة' : '--';
+  const pickupRow = document.getElementById('rs-pickup-eta-row');
+  const pickupEl = document.getElementById('rs-pickup-eta-val');
+  if (!pickupRow || !pickupEl) return;
+  if (typeof d.pickupEtaMinutes === 'number' && [RIDE_STATUS.DRIVER_ASSIGNED, RIDE_STATUS.DRIVER_ARRIVED].includes(d.status)) {
+    pickupEl.textContent = d.pickupEtaMinutes + ' دقيقة';
+    pickupRow.style.display = 'flex';
+  } else {
+    pickupRow.style.display = 'none';
+  }
+}
+// الخريطة بتتبنى أول مرة يكون فيها Pickup (يعني من أول تحديث، لأنها موجودة من وقت الإنشاء)،
+// وبعد كده كل تحديث بيحرّك نقطة المندوب بس (driverLocation - Phase 4B، مش users/{driverId}).
+function rsUpdateMap(d) {
+  if (!d.pickup) return;
+  rsSetMapVisible(true);
+  if (!rsMapInitialized) {
+    rsMapInitialized = true;
+    initRideStatusMap(d);
+  } else if (d.driverLocation) {
+    updateRideStatusDriverLocation(d.driverLocation);
+  }
+}
 function rsShowStatus(rideId, initialStatus) {
   rsCurrentRideId = rideId;
+  rsMapInitialized = false;
   rsSetLabel(RS_LABELS[initialStatus] || initialStatus);
   rsShowRetry(false);
+  rsSetMapVisible(false);
+  rsSetInfoVisible(false);
   if (rsUnsub) { rsUnsub(); rsUnsub = null; }
   rsUnsub = onSnapshot(doc(db, RIDES_COLLECTION, rideId), snap => {
     if (!snap.exists()) return;
     const d = snap.data();
     const st = d.status;
-    let label = RS_LABELS[st] || st;
-    // Pickup ETA (Phase 4) - بتتضاف للعميل بس بعد ما مندوب يتعين فعليًا ويتحسب الرقم بنجاح
-    if (st === RIDE_STATUS.DRIVER_ASSIGNED && typeof d.pickupEtaMinutes === 'number') {
-      label += ` — الوصول خلال ${d.pickupEtaMinutes} دقيقة تقريبًا`;
-    }
-    rsSetLabel(label);
+    rsSetLabel(RS_LABELS[st] || st);
     rsShowRetry(st === RIDE_STATUS.REQUESTED);
+    rsUpdateEta(d);
+    rsUpdateMap(d);
+  });
+}
+
+// ===== تصفير أعلام المتابعة عند تسجيل الخروج =====
+// جديد (Phase 4B): rides.js ماكانش عنده تسجيل زي باقي الموديولات - ضروري دلوقتي عشان
+// الـ Listeners الجديدة (البانل + خريطة الحالة) متفضلش شغالة بعد تسجيل الخروج.
+export function registerRidesResets() {
+  onListenersCleared(() => {
+    driverOfferUnsub = null; rsUnsub = null; darUnsub = null;
+    activeRideId = null; activeRideStatus = null; rsMapInitialized = false;
   });
 }

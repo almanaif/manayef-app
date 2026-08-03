@@ -4,6 +4,8 @@ import { average, collection, count, db, doc, getAggregateFromServer, limit, ord
 import { SC, SL, esc, escJs, normalizeStatus, onListenersCleared, onSnapshot, secureCloudinaryUpload, setLoad, showScreen, showToast } from './utils.js';
 import { getNextRequestId } from './merchant.js';
 import { ORDER_STATUS, acceptOrderAsDriver, getDispatchQuery, transitionOrder } from './orders.js';
+import { updateDriverSelfLocation, initDriverRegLocationMap } from './maps.js';
+import { updateDriverLocationForActiveRide, initDriverActiveRideListener } from './rides.js';
 
 // ===== GPS / LOCATION =====
 export function getLocation() {
@@ -32,14 +34,19 @@ export function startGPS() {
   window._gpsWatch = navigator.geolocation.watchPosition(pos => {
     const {latitude:lat, longitude:lng} = pos.coords;
     window.driverLat = lat; window.driverLng = lng;
-    if (window.drvMap && window.driverMarker && typeof L !== 'undefined') {
-      window.driverMarker.setLatLng([lat, lng]);
-    }
+    // Phase 4B: تحريك نقطة المندوب على خريطته الشخصية (MapLibre) مع كل نبضة GPS خام - مفيش
+    // كتابة Firestore هنا، بس Marker محلي (updateDriverSelfLocation بتتحقق بنفسها إن drvMap
+    // موجودة أصلاً - صفر تأثير لو الخريطة مقفولة).
+    updateDriverSelfLocation(lat, lng);
     const now = Date.now();
     const movedFar = _lastGpsLat===null || _distMeters(_lastGpsLat,_lastGpsLng,lat,lng) >= 30;
     if (now - _lastGpsWrite < 10000 && !movedFar) return;
     _lastGpsWrite = now; _lastGpsLat = lat; _lastGpsLng = lng;
     updateDoc(doc(db,'users',window.CU.uid), {lat, lng, lastSeen: serverTimestamp()}).catch(()=>{});
+    // Phase 4B — البند المؤجل: نفس النبضة المتحكم فيها (10 ثواني/30 متر)، صفر كتابات إضافية.
+    // كتابة rides/{rideId}.driverLocation بتتم بس لو فيه مشوار جاري في إحدى الحالات الثلاث
+    // (driver_assigned/driver_arrived/in_progress) - الفحص ده بيحصل جوه الدالة نفسها.
+    updateDriverLocationForActiveRide(lat, lng);
   }, ()=>{}, {enableHighAccuracy:true, maximumAge:10000, timeout:15000});
 }
 
@@ -215,7 +222,12 @@ export function toggleOnline(el) {
   document.getElementById('tog-dot').className='tog-dot '+(window.onlineStatus?'on':'off');
   document.getElementById('tog-lbl').textContent = window.onlineStatus?'متاح':'غير متاح';
   showToast(window.onlineStatus?'🟢 أنت متاح الآن':'⚫ أنت غير متاح',window.onlineStatus?'ok':'');
-  if (!window.onlineStatus) document.getElementById('new-ord-banner').style.display='none';
+  if (!window.onlineStatus) {
+    document.getElementById('new-ord-banner').style.display='none';
+    const rb = document.getElementById('ride-offer-banner'); if (rb) rb.style.display='none';
+  }
+  // Phase 3B: isOnline لازم يتكتب في Firestore فعليًا عشان يبقى قابل للاستعلام وقت الـ Dispatch
+  if (window.CU) updateDoc(doc(db,'users',window.CU.uid), { isOnline: window.onlineStatus }).catch(()=>{});
 }
 
 export function drvNav(tab,el) {
@@ -382,12 +394,7 @@ export async function dregGetLocation(){
     btn.classList.add('got');
     const wrap=document.getElementById('loc-map-wrap');
     wrap.style.display='block';
-    setTimeout(()=>{
-      if(window._locMap){ window._locMap.remove(); }
-      window._locMap = L.map('loc-map',{zoomControl:false,attributionControl:false}).setView([latitude,longitude],16);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window._locMap);
-      L.marker([latitude,longitude]).addTo(window._locMap);
-    },100);
+    setTimeout(()=>{ initDriverRegLocationMap(latitude, longitude); },100);
     dregSaveDraft();
   }, err=>{
     btn.textContent='📍 تحديد موقعي الحالي';

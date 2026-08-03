@@ -8,6 +8,7 @@ import { loadAdminData } from './admin.js';
 import { startNotifListener } from './notifications.js';
 import { loadMerchantData } from './merchant.js';
 import { listenSettings } from './orders.js';
+import { listenRideOffers, initDriverActiveRideListener } from './rides.js';
 
 // ===== AUTH FUNCTIONS =====
 export function hideLoading() {
@@ -193,7 +194,7 @@ export function routeUser() {
   if (role === 'admin') { showScreen('screen-admin'); loadAdminData(); }
   else if (role === 'driver') {
     if (window.CUD?.status === 'pending' || window.CUD?.status === 'rejected') showScreen('screen-driver-register');
-    else { showScreen('screen-driver'); loadDriverData(); startGPS(); }
+    else { showScreen('screen-driver'); loadDriverData(); startGPS(); listenRideOffers(); initDriverActiveRideListener(); }
   }
   else if (role === 'merchant') { showScreen('screen-merchant'); loadMerchantData(); }
   else if (window.CUD?.status === 'blocked' || window.CUD?.status === 'deleted') { showScreen('screen-blocked'); }

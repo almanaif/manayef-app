@@ -14,7 +14,7 @@ import { admAccDrv, admAccStore, admDelProd, admLogoutConfirm, admNav, admRejDrv
 import { onCustomerSearchInput, filterCustomersByStatus, loadMoreCustomers, openCustomerDetails, closeCustomerDetails, saveCustomerBasicInfo, toggleCustomerBlock, softDeleteCustomer, loadMoreCustomerOrders, registerCustomerListReset } from './admin-customers.js';
 import { loadMoreMerchantRequests, loadMoreAnyRequests, acceptMerchantRequest, rejectMerchantRequest, addNoteToMerchantRequest, acceptAnyRequest, rejectAnyRequest, addNoteToAnyRequest } from './admin-requests.js';
 import { doLogin, doLogout, doRegister, hideLoading, loginGoogle, pickEntryType, routeUser, selectRole, showEmailOTP, showForgot, switchTab, syncToHubSpot, updateEntryLabel } from './auth.js';
-import { openRideRequest, resetRideRequest, selectRideVehicle, createRideRequest } from './rides.js';
+import { openRideRequest, resetRideRequest, selectRideVehicle, createRideRequest, acceptRideOffer, rejectRideOffer, retryDispatch, handleDriverRideAction, registerRidesResets } from './rides.js';
 
 // كل موديول عنده أعلام subscribe (زي productsUnsub) بيسجّل دالة تصفيرها هنا -- لازم يتنفذوا
 // بعد ما كل الموديولات خلصت تحميل (يعني هنا في main.js تحديدًا) عشان نتجنب مشكلة
@@ -28,6 +28,7 @@ registerDriverResets();
 registerMerchantResets();
 registerAdminResets();
 registerCustomerListReset();
+registerRidesResets();
 
 // ===== EXPOSE TO WINDOW =====
 // app.js (اتقسم دلوقتي لموديولات) بيتحمّل كـ ES module، فالدوال في الأعلى مش بتبقى
@@ -55,7 +56,8 @@ Object.assign(window, {
   smQuickPause, smSaveProfile, smSetAccountStatus, smSetOpen, smTab, smUploadCover,
   smUploadLogo, toggleProdAvail, uploadBannerImg, doLogin, doLogout, doRegister, hideLoading,
   loginGoogle, pickEntryType, routeUser, selectRole, showEmailOTP, showForgot, switchTab,
-  syncToHubSpot, updateEntryLabel, openRideRequest, resetRideRequest, selectRideVehicle, createRideRequest
+  syncToHubSpot, updateEntryLabel, openRideRequest, resetRideRequest, selectRideVehicle, createRideRequest,
+  acceptRideOffer, rejectRideOffer, retryDispatch, handleDriverRideAction
 });
 
 // ===== PWA =====

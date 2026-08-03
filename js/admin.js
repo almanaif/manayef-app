@@ -11,6 +11,29 @@ import { createPaginatedListener } from './admin-pagination.js';
 import { startCustomersListener, stopCustomersListener, registerCustomerListReset } from './admin-customers.js';
 import { startIncomingRequestsListeners, stopIncomingRequestsListeners } from './admin-requests.js';
 
+// ===== Admin Map State (Phase 4B) — آخر نسخة معروفة من المناديب والمشاوير الجارية، عشان
+// initAdminMap تتنده بنفس الشكل (drivers, rides) لما أي مصدر منهم يتحدث، من غير ما نضطر
+// نجيب المصدر التاني تاني من الصفر =====
+let admMapDrivers = [];
+let admMapRides = [];
+let adminRidesUnsub = null;
+// بيشتغل بس وقت ما شاشة الخريطة فعليًا مفتوحة (نفس فلسفة startDriversListener/stopDriversListener
+// تحت) - مشاوير جارية بس (driver_assigned/driver_arrived/in_progress)، صفر Routing جديد،
+// كل حقل (pickup/dropoff/routeGeometry/driverLocation) موجود بالفعل في مستند المشوار.
+function startAdminRidesListener() {
+  if (adminRidesUnsub) return;
+  const q = query(collection(db, 'rides'), where('status', 'in', ['driver_assigned', 'driver_arrived', 'in_progress']));
+  adminRidesUnsub = onSnapshot(q, snap => {
+    admMapRides = [];
+    snap.forEach(d => admMapRides.push(d.data()));
+    if (window.admMap) initAdminMap(admMapDrivers, admMapRides);
+  });
+}
+function stopAdminRidesListener() {
+  if (adminRidesUnsub) { adminRidesUnsub(); adminRidesUnsub = null; }
+  admMapRides = [];
+}
+
 // خريطة الانتقالات المسموحة (زي ما هي في orders.js) — بنستخدمها هنا بس عشان نعرض للأدمن
 // أزرار الحالات المسموحة فعليًا بعدها، بدل ما نعرضله كل الحالات زي قبل كده (كان ممكن يقفز
 // لأي حالة عشوائية). القائمة دي مطابقة تمامًا لـ ORDER_TRANSITIONS في orders.js.
@@ -74,7 +97,8 @@ export async function loadAdminData() {
     // بتتعارض مع notifications.js اللي بيكتب على نفس الـ Element ID برقم مختلف (إشعارات غير
     // مقروءة). البادج ده بقى ملك حصري لنظام الإشعارات. عدد المناديب المعلّقين معروض بشكل
     // مستقل وصحيح فعلاً في adm-pend-c فوق.
-    if (window.admMap) initAdminMap(allDrvs);
+    admMapDrivers = allDrvs;
+    if (window.admMap) initAdminMap(admMapDrivers, admMapRides);
   });
 }
 
@@ -614,7 +638,7 @@ const FILTER_GROUPS = {
 export function admNav(page,el){
   document.querySelectorAll('.adm-nb').forEach(b=>b.classList.remove('active'));if(el)el.classList.add('active');
   ['dashboard','drivers','stores','orders','users','finance','cats','banners','coupons','map','audit','requests'].forEach(p=>{const e=document.getElementById('adm-'+p);if(e)e.style.display=p===page?'block':'none';});
-  if(page==='map'){setTimeout(()=>initAdminMap([]),200);}
+  if(page==='map'){ startAdminRidesListener(); setTimeout(()=>initAdminMap(admMapDrivers, admMapRides),200); } else { stopAdminRidesListener(); }
   if(page==='audit'){loadAuditLog();}
   // جديد (Sprint 2.3 Phase 2b - الخيار C): القوائم الطويلة (مناديب/عملاء/تجار) بتشتغل بـ Listener
   // بس وهي الشاشة الظاهرة فعليًا، وبتتوقف لما الأدمن يسيب الشاشة - أقل استهلاك ممكن من غير ما
@@ -846,5 +870,7 @@ export function registerAdminResets() {
   onListenersCleared(() => {
   adminOrdersUnsub = null; adminUsersUnsub = null; auditLogUnsub = null; smProdsUnsub = null;
   recentOrdersPager = null; allOrdsPager = null; drvsPager = null; storesPager = null;
+  if (adminRidesUnsub) { try { adminRidesUnsub(); } catch(e) {} adminRidesUnsub = null; }
+  admMapDrivers = []; admMapRides = [];
   });
 }
